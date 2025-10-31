@@ -7,7 +7,8 @@ export async function ProductTable() {
       name VARCHAR(100) NOT NULL,
       description TEXT NOT NULL,
       price FLOAT NOT NULL,
-      category VARCHAR(50) NOT NULL
+      category VARCHAR(50) NOT NULL,
+      product TEXT[] NOT NULL 
     );
   `;
   await pool.query(query);
