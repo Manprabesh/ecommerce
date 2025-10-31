@@ -1,30 +1,64 @@
 import pool from "../config/database.js";
-
+import { aws_config } from "../config/aws.js";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+    GetObjectCommand,
+} from "@aws-sdk/client-s3";
+/**
+ * 
+ * @param {*} req - Express request object containing query parameters:
+ *  - name => product name
+ *  - description
+ *  - price
+ *  - category
+ *  - product => product file name with its file type 
+ * @param {*} res 
+ * @returns 
+ */
 export async function uploadProduct(req, res) {
     try {
-        const { name, description, price, category } = req.body;
+        const { name, description, price, category, product } = req.body;
 
-        if (!name || !description || !price || !category) {
+        if (!name || !description || !price || !category || !product) {
             return res.status(400).json({ error: "All fields are required" });
         }
 
+        const imgUrl = await Promise.all(
+            product.map(async (data) => {
+                const get_command = new GetObjectCommand({
+                    Bucket: "manprabesh-ecommerce",
+                    Key: `products/${data.name}`,
+                });
+
+                const presignedUrl = await getSignedUrl(aws_config(), get_command);
+                return presignedUrl;
+            })
+        );
+
+        console.log("arraof data", imgUrl)
+        // process.exit()
+
+        const fileNames = product.map(p => p.name);
         const insertQuery = `
-      INSERT INTO products (name, description, price, category)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *;
-    `;
+            INSERT INTO products (name, description, price, category, product)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *;
+            `;
 
         const result = await pool.query(insertQuery, [
             name,
             description,
             price,
             category,
+            fileNames,
         ]);
 
         res.status(201).json({
             message: "✅ Product uploaded successfully",
             product: result.rows[0],
+            imgUrl
         });
+
     } catch (error) {
         console.error("❌ Error uploading product:", error);
         res.status(500).json({ error: "Server error while uploading product" });
