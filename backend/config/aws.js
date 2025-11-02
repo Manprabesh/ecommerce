@@ -11,5 +11,7 @@ export const aws_config=()=>{
             }
         }
     )
+    console.log("access key ✅",process.env.aws_access_key_id);
+    console.log("secret acces kry key ✅",process.env.aws_secret_access_key);
     return client;
 }
