@@ -5,7 +5,10 @@ import './App.css'
 import { Authentication } from "../pages/auth"
 import Product from '../pages/admin/product'
 import Category from '../pages/admin/category'
+import AddressPage from '../pages/user/address'
+import UserProduct from '../pages/user/product'
 import { BrowserRouter, Routes, Route } from "react-router";
+
 
 function App() {
   const [count, setCount] = useState(0)
@@ -16,6 +19,9 @@ function App() {
         <Route path="/auth" element={<Authentication />} />
         <Route path="/admin/products" element={<Product />} />
         <Route path="/admin/create/products" element={<Category />} />
+        <Route path="/address" element={<AddressPage />} />
+        <Route path="/user/product" element={<UserProduct />} />
+        
       </Routes>
 
     </BrowserRouter>

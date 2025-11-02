@@ -1,20 +1,13 @@
-// import sequelize from "../config/database";
+import pool from "../config/database.js";
 
-// import { DataTypes } from "sequelize";
-// import sequelize from "../config/database";
-
-const getUserModel = (sequelize, { DataTypes }) => {
-    const user = sequelize.define('users', {
-        email: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        password: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        }
-    })
-    return user;
+export async function userTable(){
+    const query = `
+    CREATE TABLE IF NOT EXISTS users(
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(20) NOT NULL
+    )
+    `
+    await pool.query(query);
+    console.log("✅ user table created");
 }
-
-export default getUserModel

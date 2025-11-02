@@ -35,6 +35,57 @@ class Api {
         )
         return await response
     }
+
+    async createCategory(data) {
+        const response = await this.makeRequest('/create/category', {
+            method: "POST",
+            body: JSON.stringify({
+                category_name: data
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        return await response;
+
+    }
+
+    async getCategory() {
+
+        const response = await this.makeRequest('/get/category', {
+            method: "GET",
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        console.log("response ---->", response)
+        return await response;
+    }
+
+    async upload_to_aws(data, file) {
+        console.log("incoming data--->", data)
+        console.log("incoming file--->", file)
+
+        const response = await fetch(data, {
+            method: "PUT",
+            headers: {
+                "Content-Type": file.type
+            },
+            body: file
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        console.log("File uploaded succesully")
+        return response;
+    }
+
+      async addToCart(data){
+        console.log("added to cart",JSON.stringify(data));
+    }
+
 }
 const api = new Api()
 export default api;

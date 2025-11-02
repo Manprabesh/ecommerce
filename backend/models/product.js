@@ -7,7 +7,7 @@ export async function ProductTable() {
       name VARCHAR(100) NOT NULL,
       description TEXT NOT NULL,
       price FLOAT NOT NULL,
-      category VARCHAR(50) NOT NULL,
+      category_id UUID REFERENCES categories(category_id) ON DELETE CASCADE,
       product TEXT[] NOT NULL 
     );
   `;
