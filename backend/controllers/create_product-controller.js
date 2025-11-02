@@ -3,6 +3,7 @@ import { aws_config } from "../config/aws.js";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
     GetObjectCommand,
+    PutObjectCommand
 } from "@aws-sdk/client-s3";
 /**
  * 
@@ -23,14 +24,24 @@ export async function uploadProduct(req, res) {
             return res.status(400).json({ error: "All fields are required" });
         }
 
+        const searchQuery = {
+            text: `SELECT * FROM categories where category_name = $1`,
+            values: [category]
+        }
+
+        const response = await pool.query(searchQuery);
+        console.log("response from category", response.rows[0].category_id)
+
         const imgUrl = await Promise.all(
             product.map(async (data) => {
-                const get_command = new GetObjectCommand({
+                const put_object = new PutObjectCommand({
                     Bucket: "manprabesh-ecommerce",
                     Key: `products/${data.name}`,
+                    // ContentType: "image/png",
                 });
 
-                const presignedUrl = await getSignedUrl(aws_config(), get_command);
+                const presignedUrl = await getSignedUrl(aws_config(), put_object);
+                console.log('presigned', presignedUrl)
                 return presignedUrl;
             })
         );
@@ -40,7 +51,7 @@ export async function uploadProduct(req, res) {
 
         const fileNames = product.map(p => p.name);
         const insertQuery = `
-            INSERT INTO products (name, description, price, category, product)
+            INSERT INTO products (name, description, price, category_id, product)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *;
             `;
@@ -49,9 +60,11 @@ export async function uploadProduct(req, res) {
             name,
             description,
             price,
-            category,
+            response.rows[0].category_id,
             fileNames,
         ]);
+
+        console.log("result --->", result.rows);
 
         res.status(201).json({
             message: "✅ Product uploaded successfully",
@@ -113,7 +126,7 @@ export async function getProduct(req, res) {
 
         console.log(result.rows)
 
-        if (rows.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: "No products found",
@@ -138,9 +151,9 @@ export async function getAllProduct(req, res) {
 
         const result = await pool.query(query);
 
-        console.log("result ->", result.rows.length);
+        console.log("result ->", result.rows);
 
-        if (rows.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: "No products found",
@@ -148,10 +161,34 @@ export async function getAllProduct(req, res) {
             });
         }
 
+        console.log("00000000000000000000 --->", result.rows)
+        if (result.rows[0].product) {
+        }
+
+        
+
+        const fileUrl =await Promise.all(result.rows.map(async (data) => {
+           const url= await Promise.all(data.product.map(async (filename) => {
+
+                const get_command = new GetObjectCommand({
+                    Bucket: "manprabesh-ecommerce",
+                    Key: `products/${filename}`,
+                });
+
+                const presignedUrl = await getSignedUrl(aws_config(), get_command);
+                console.log('presigned --->', presignedUrl)
+                console.log("____________________---")
+                return presignedUrl;
+            }))
+            return url
+        }));
+
+        console.log("file URL ==============>",fileUrl);
         return res.status(200).json({
             success: true,
             message: "product fetch successfully",
-            data: result.rows
+            data: result.rows,
+            images:fileUrl
         })
     }
     catch (error) {
