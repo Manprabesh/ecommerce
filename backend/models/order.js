@@ -17,5 +17,7 @@ export async function orderTable() {
     updated_at TIMESTAMP DEFAULT NOW()
 );
 `
+
     await pool.query(query);
+    console.log("created order table")
 }
