@@ -1,9 +1,9 @@
 import pool from "../config/database.js";
 
 export async function addressTable(){
-   const query = `CREATE TABLE addresses (
+   const query = `CREATE TABLE IF NOT EXISTS addresses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
     full_name VARCHAR(100),
     phone_number VARCHAR(20),
     address_line_1 VARCHAR(255) NOT NULL,
@@ -16,4 +16,5 @@ export async function addressTable(){
     updated_at TIMESTAMP DEFAULT NOW()
 )`;
 await pool.query(query);
+console.log("created address table")
 }
