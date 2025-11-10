@@ -2,17 +2,64 @@ import pool from "../config/database.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import api from "../utils/ApIResponse.js";
+import generateToken from "../utils/generateJwtToken.js";
+import { encryptPassword, decryptPassword } from "../utils/encryptDecryptPassword.js";
+;
+
 
 export async function createUser(req, res) {
     try {
+
         const email = req.body.category_name.email;
         const password = req.body.category_name.password;
-        // console.log(req.body.category_name.email)
-        console.log("email", email, 'password', password)
+
+        /**
+         * Getting the admin email and admin password
+        */
+
+        const admind_email = process.env.admin_email;
+        const admind_password = process.env.admin_password;
+        console.log("creating user", admind_email)
+
+        let hashedPassword = null;
+
         const searchQuery = `SELECT * from users where email = $1`;
+
+        if (email == admind_email && password == admind_password) {
+            const response = await pool.query(searchQuery, [email]);
+            if (response.rows.length > 0) {
+                return res.status(409).json(
+                    api.response("admin already exist", false)
+                )
+            }
+            else {
+                hashedPassword = await encryptPassword(password);
+                const insertQuery = {
+                    text: `INSERT INTO users(email, password, role) VALUES ($1, $2, $3) RETURNING user_id, email, role;`,
+                    values: [email, hashedPassword, "admin"]
+                }
+                const adminData = await pool.query(insertQuery);
+
+                console.log("admin data ---------->", adminData.rows[0]['user_id']);
+                const adminToken = generateToken(email, adminData.rows[0]['user_id']);
+
+                res.cookie("adminToken", adminToken, {
+                    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production" ? true : false,
+                    maxAge: 48 * 60 * 60 * 1000,
+                    path: "/",
+                });
+
+                return res.status(201).json(
+                    api.response("admin created successfully", true, adminData.rows[0])
+                );
+            }
+        }
+
         const response = await pool.query(searchQuery, [email]);
 
-        console.log('response in user created ->', response);
+        // console.log('response in user created ->', response);
         if (response.rows.length > 0) {
 
             return res.status(409).json({
@@ -20,36 +67,31 @@ export async function createUser(req, res) {
                 message: "user already exist"
             })
         }
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-
+        hashedPassword = await encryptPassword(password);
+        console.log("hashpassword", hashedPassword);
         const insertQuery = {
-            text: `INSERT INTO users(email, password) VALUES ($1, $2) RETURNING *;`,
+            text: `INSERT INTO users(email, password) VALUES ($1, $2) RETURNING user_id, email, role;`,
             values: [email, hashedPassword]
         }
+
         const result = await pool.query(insertQuery)
-        console.log("---------------------")
-        console.log(result.rows)
-        const token = jwt.sign(
-            { id: result.rows[0].user_id, email: result.rows[0].email },
-            process.env.JWT_SECRET,
-            { expiresIn: "1d" }
-        );
-        console.log('token -------->', token)
-        res.cookie("ecommerceToken", token, {
+        const userToken = generateToken(result.rows[0]['email'], result.rows[0]['user_id'])
+
+        res.cookie("ecommerceToken", userToken, {
             sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
             httpOnly: true,
             secure: process.env.NODE_ENV === "production" ? true : false,
             maxAge: 48 * 60 * 60 * 1000,
             path: "/",
         });
-        return res.status(200).json(api.response("New user created", {
-            id: result.rows[0].user_id,
-            email: result.rows[0].email,
-        }))
+        return res.status(200).json(
+            api.response("New user created", {
+                id: result.rows[0]['user_id'],
+                email: result.rows[0]['email'],
+                role: result.rows[0]['role']
+            }))
     } catch (error) {
-        console.error("❌ Error uploading product:", error);
+        console.error("❌ Error creating user:", error);
         res.status(500).json(api.reject("Server error while creting user account", error));
     }
 }
@@ -58,11 +100,31 @@ export async function loginUser(req, res) {
     try {
         const { email, password } = req.body;
 
+        const admin_email = process.env.admin_email;
+        const admind_password = process.env.admin_password;
+
+        const searchQuery = `SELECT * FROM users WHERE email = $1`;
+
+        //check for admin & generate admin token
+        if (email === admin_email && password === admind_password) {
+            const result = await pool.query(searchQuery, [email])
+            console.log("getting users data -------->", result.rows[0])
+            const adminToken = generateToken(email);
+            res.cookie("adminToken", adminToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production", // only HTTPS in production
+                sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+                maxAge: 48 * 60 * 60 * 1000,
+                path: "/"
+            });
+            return res.status(200).json(api.response("admin login successfull", true, admin_email));
+        }
+
         console.log("Login attempt ->", email);
 
-        // 1️⃣ Check if user exists
-        const searchQuery = `SELECT * FROM users WHERE email = $1`;
+        //Check if user exists
         const response = await pool.query(searchQuery, [email]);
+        
 
         if (response.rows.length === 0) {
             return res.status(404).json({
@@ -72,9 +134,9 @@ export async function loginUser(req, res) {
         }
 
         let user = response.rows[0];
-
-        // 2️⃣ Compare password with hash
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+        //  Compare password with hash
+        const isPasswordValid = await decryptPassword(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
@@ -82,27 +144,25 @@ export async function loginUser(req, res) {
             });
         }
 
-        // 3️⃣ Generate JWT token
-        const token = jwt.sign(
-            { id: user.user_id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: "1d" }
-        );
+        // Generate JWT token
+        const userToken = generateToken(user.email, user.user_id);
 
         user = {
             id: user.user_id,
             email: user.email,
         }
 
-        // 4️⃣ Set cookie securely
-        res.cookie("ecommerceToken", token, {
+        //Set cookie securely
+        res.cookie("ecommerceToken", userToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production", // only HTTPS in production
             sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+            maxAge: 48 * 60 * 60 * 1000,
+            path: "/"
         });
 
         console.log("✅ User logged in:", user.email);
-        return res.status(200).json(api.response("Login successful", user))
+        return res.status(200).json(api.response("Login successful", true, user))
 
 
     } catch (error) {
