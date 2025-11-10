@@ -1,155 +1,180 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, X, Check, Image as ImageIcon, DollarSign, FileText, Package } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import api from "../../services/api";
+import AdminLayout from "../../components/AdminLayout";
+import Loader from "../../components/Loader";
 
 export default function Product() {
-  // const [img, setImg] = useState([]);
-  const [imgData, setImgData] = useState([])
-  const [productName, setProductName] = useState(null)
-  const [price, setPrice] = useState(null);
-  const [description, setDescription] = useState("")
+  const [imgData, setImgData] = useState([]);
+  const [productName, setProductName] = useState("");
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
   const [category, setCategory] = useState([]);
-  const [cName, setCname] = useState(null);
-  const [imgToUplaod, setImgToUpload] = useState([])
-  const [imgUrl, setImgUrl] = useState([])
+  const [cName, setCname] = useState("");
+  const [imgToUpload, setImgToUpload] = useState([]);
+  const [imgUrl, setImgUrl] = useState([]);
+  const [loader, setLoader] = useState(false);
 
-  const file_ref = useRef();
-  const productRef = useRef();
-  const descriptioRef = useRef();
-  const priceRef = useRef();
-  let arrOfFiles = [];
-
-  function uplaodProducts(e) {
-    e.preventDefault()
-    // console.log("file ref--->", file_ref.current.files[0])
-    file_ref.current.click();
-    // arrOfFiles.push(file_ref.current.files[0]);
-  }
-
+  const fileRef = useRef();
 
   const handleFileChange = (event) => {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
 
-    const data = URL.createObjectURL(event.target.files[0]);
-    console.log("URL -->", event.target.files[0]);
-    setImgData(prev => [...prev, data]);
-    const product = event.target.files[0];
-    setImgToUpload(prev => [...prev, { name: product.name, type: product.type }]);
-    arrOfFiles.push(event.target.files[0]);
+    const previewUrls = files.map(file => URL.createObjectURL(file));
+    setImgData(prev => [...prev, ...previewUrls]);
+    setImgToUpload(prev => [...prev, ...files.map(file => ({ name: file.name, type: file.type }))]);
+    setImgUrl(prev => [...prev, ...files]);
+  };
 
-    setImgUrl(prev => [...prev, event.target.files[0]])
+  const handleUploadClick = (e) => {
+    e.preventDefault();
+    fileRef.current?.click();
+  };
 
-    console.log("arr of files -->", arrOfFiles);
+  const handleUploadProduct = async () => {
+    if (!productName || !price || !description || !cName || imgUrl.length === 0) {
+      alert("⚠️ Please fill all fields and upload at least one image.");
+      return;
+    }
 
+    try {
+      setLoader(true);
+
+      const productData = {
+        name: productName,
+        price,
+        description,
+        category: cName,
+        product: imgToUpload,
+      };
+
+      const response = await api.uploadProduct(productData);
+      console.log("response --->",response)
+      const formData = new FormData();
+
+      await Promise.all(
+        imgUrl.map(async (file, i) => {
+          console.log("--------------------",file)
+          formData.append(`file${i}`, file);
+          console.log("data",formData.get(`file${i}`))
+          await api.upload_to_aws(response.data[i], file);
+        })
+      );
+
+      alert("✅ Product uploaded successfully!");
+      // Reset form
+      setImgData([]);
+      setImgToUpload([]);
+      setImgUrl([]);
+      setProductName("");
+      setPrice("");
+      setDescription("");
+      setCname("");
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("❌ Failed to upload product");
+    } finally {
+      setLoader(false);
+    }
   };
 
   useEffect(() => {
-    const data = JSON.parse(localStorage.getItem('category'))
-    setCategory(data);
-    console.log(data)
-
-  }, [imgData])
-
-  useEffect(() => {
-    console.log("image url", imgUrl)
-  }, [imgUrl])
-
-  async function uploadProducts() {
-    //upload product to backend
-
-    const data = {
-      name: productName,
-      price: price,
-      description: description,
-      category: cName,
-      product: imgToUplaod
-    };
-
-    // console.log("formData", formData)
-    const response = await api.uploadProduct(data);
-    console.log("incoming response ", response.product.product);
-    console.log("incoming image utl ", response.imgUrl);
-
-    const formData = new FormData();
-     
-    Promise.resolve(imgUrl.map(async (data, i) => {
-      formData.append(`file${i}`, data);
-      const file = formData.get(`file${i}`);  
-      console.log("file type --->", file.type)
-      const aws_response = await api.upload_to_aws(response.imgUrl[i], file);
-      console.log("resposne uploaded image to aws", aws_response)
-
-    }))
-
-  }
-
-  function selectCategory(data) {
-    console.log("setting data ->", data)
-    setCname(data);
-  }
-
-  function saveDescription(e) {
-    console.log("on chage", e.target.value)
-    setDescription(e.target.value);
-  }
-
-  function savePrice(e) {
-    setPrice(e.target.value)
-  }
-
-  function saveProductName(e) {
-    setProductName(e.target.value);
-  }
+    (async () => {
+      try {
+        const response = await api.getAllCategory();
+        if (response.category?.length) setCategory(response.category);
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+      }
+    })();
+  }, []);
 
   return (
-    <>
-      <div className="bg-black h-full">
-        <div className="flex flex-col justify-center items-center " >
+    <AdminLayout>
+      <div className="bg-black h-full flex flex-col items-center">
+        {loader && <Loader message="Uploading product..." />}
 
-          <div className="h-100 flex justify-between gap-6 mt-10 " onClick={(e) => uplaodProducts(e)}>
-            <img src={imgData[0]} alt="No file" srcset="" className={imgData[0] ? 'h-100 w-100' : `h-100 w-100 bg-amber-700 rounded-2xl`} />
-            <img src={imgData[1]} alt="No file" srcset="" className={imgData[1] ? 'h-100 w-100' : `h-100 w-100 bg-amber-700 rounded-2xl`} />
-            <img src={imgData[2]} alt="No file" srcset="" className={imgData[2] ? 'h-100 w-100' : `h-100 w-100 bg-amber-700 rounded-2xl`} />
-          </div>
+        {/* Image Upload Section */}
+        <div className="flex justify-between gap-6 mt-10 cursor-pointer" onClick={handleUploadClick}>
+          {[0, 1, 2].map((i) => (
+            <img
+              key={i}
+              src={imgData[i] || ""}
+              alt=""
+              className={`h-100 w-100 rounded-2xl ${imgData[i] ? "" : "bg-amber-700"}`}
+            />
+          ))}
+        </div>
 
-          <div>
-            <input type="file" id="file" name="file" ref={file_ref} multiple className="hidden" onChange={handleFileChange} />
-          </div>
+        <input
+          type="file"
+          ref={fileRef}
+          multiple
+          className="hidden"
+          onChange={handleFileChange}
+        />
 
-          <div className="flex flex-col mt-3 items-center">
-            <label htmlFor="" className="text-white">Enter product name</label>
-            <input type="text" className="bg-white h-10 w-50 rounded-md" ref={productRef} onChange={(e) => saveProductName(e)} />
-          </div>
-          <div className="flex flex-col mt-3 items-center">
-            <label htmlFor="" className="text-white">Enter product price</label>
-            <input type="number" className="bg-white h-10 w-50 rounded-md" ref={priceRef} onChange={(e) => savePrice(e)} />
-          </div>
-
-          <label for="myDropdown" className="text-white mt-3 mb-1">select category:</label>
-          <select id="myDropdown" name="selectedOption" className="text-white bg-blue-400 h-10 px-10 text-m py-2 rounded-md">
-            {
-              category.map((data, index) => (
-                // console.log(data.category_name)
-                <option value="option1" key={index} className="text-white" onClick={() => selectCategory(data.category_name)}>{data.category_name}</option>
-              ))
-            }
-          </select>
-
-          <div className="flex flex-col items-center mt-3">
-            <label htmlFor="description" className="text-white">Enter product name</label>
-            <textarea
-              name="description"
-              placeholder="Describe your product..."
-              rows="8"
-              ref={descriptioRef}
-              onChange={(e) => saveDescription(e)}
-              className="w-110 bg-slate-700/50 border border-slate-600 text-white rounded-xl  px-3 py-5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-500 resize-none "
+        {/* Product Details */}
+        <div className="flex flex-col mt-5 items-center gap-4">
+          <div className="flex flex-col items-center">
+            <label className="text-white mb-1">Enter product name</label>
+            <input
+              type="text"
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              className="bg-white h-10 w-50 rounded-md px-2"
             />
           </div>
-          <button onClick={uploadProducts} className="bg-blue-400 mt-10 mb-30 px-8 py-3 rounded-xl" >Uplaod products</button>
 
+          <div className="flex flex-col items-center">
+            <label className="text-white mb-1">Enter product price</label>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="bg-white h-10 w-50 rounded-md px-2"
+            />
+          </div>
+
+          <div className="flex flex-col items-center">
+            <label htmlFor="category" className="text-white mb-1">Select category:</label>
+            <select
+              id="category"
+              value={cName}
+              onChange={(e) => setCname(e.target.value)}
+              className="text-white bg-blue-400 h-10 px-10 rounded-md"
+            >
+              <option value="">Select category</option>
+              {category.map(cat => (
+                <option value={cat.category_name} key={cat.category_id}>
+                  {cat.category_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col items-center w-full">
+            <label htmlFor="description" className="text-white mb-1">Enter product description</label>
+            <textarea
+              id="description"
+              name="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="8"
+              placeholder="Describe your product..."
+              className="w-110 bg-slate-700/50 border border-slate-600 text-white rounded-xl px-3 py-5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder-slate-500 resize-none"
+            />
+          </div>
+
+          <button
+            onClick={handleUploadProduct}
+            className="bg-blue-400 mt-10 mb-30 px-8 py-3 rounded-xl hover:bg-blue-500 transition"
+          >
+            Upload Product
+          </button>
         </div>
       </div>
-    </>
-  )
+    </AdminLayout>
+  );
 }
-
