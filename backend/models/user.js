@@ -5,7 +5,8 @@ export async function userTable(){
     CREATE TABLE IF NOT EXISTS users(
     user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(100) NOT NULL,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    role VARCHAR(5) DEFAULT user
     )
     `
     await pool.query(query);
