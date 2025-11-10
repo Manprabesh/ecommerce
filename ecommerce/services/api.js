@@ -82,10 +82,80 @@ class Api {
         return response;
     }
 
-      async addToCart(data){
-        console.log("added to cart",JSON.stringify(data));
+    async addToCart(data) {
+        console.log("added to cart", JSON.stringify(data));
+        const response = await this.makeRequest('/create/cart', {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify(data),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+
+        })
+        return response;
     }
 
+    async getAllProduct() {
+        const response = await this.makeRequest('/get/products', {
+            method: "GET",
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        return response;
+    }
+
+    async getAllCategory() {
+        const response = await this.makeRequest('/get/category', {
+            method: "GET",
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        return response;
+    }
+
+    async createUser(data) {
+        console.log("creating user", data)
+        const response = await this.makeRequest('/create/user', {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify({
+                category_name: data
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        return response;
+    }
+    async loginUser(data) {
+        const response = await this.makeRequest('/login/user', {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        return response;
+    }
+
+    async isAuthenticated() {
+        const response = await this.makeRequest('/isAuthenticated', {
+            method: "GET",
+            credentials: "include",
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        return response;
+    }
 }
 const api = new Api()
 export default api;
