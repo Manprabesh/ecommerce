@@ -67,10 +67,11 @@ export async function uploadProduct(req, res) {
             fileNames,
         ]);
 
-        console.log("result --->", result.rows);
+        result.rows[0].url = imgUrl
+        console.log("result --->", result.rows[0]);
 
         res.status(201).json(
-            api.response("✅ Product uploaded successfully", result.rows[0], imgUrl)
+            api.response("✅ Product uploaded successfully", result.rows[0])
         );
 
     } catch (error) {
@@ -168,7 +169,7 @@ export async function getAllProduct(req, res) {
 
         console.log("00000000000000000000 --->", result.rows)
 
-        const fileUrl = await Promise.all(result.rows.map(async (data) => {
+        const data = await Promise.all(result.rows.map(async (data) => {
             const url = await Promise.all(data.product.map(async (filename) => {
 
                 const get_command = new GetObjectCommand({
@@ -181,20 +182,18 @@ export async function getAllProduct(req, res) {
                 console.log("____________________---")
                 return presignedUrl;
             }))
-            return url
-        }));
-        console.log("results --->", result.rows)
-        console.log("file URL ==============>", fileUrl);
-        const data = result.rows.map(product => {
-            return {
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                description: product.description
+             return {
+                id: data.id,
+                name: data.name,
+                price: data.price,
+                description: data.description,
+                url : url
+
             };
-        });
+        }));
+   
         return res.status(200).json(
-            api.response("fetch product succesfully", data, fileUrl, true)
+            api.response("fetch product succesfully", data)
         )
     }
     catch (error) {
