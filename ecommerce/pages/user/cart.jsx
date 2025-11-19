@@ -28,6 +28,8 @@ const Cart = () => {
   }, []);
 
   const updateQuantity = (cartId, delta) => {
+    console.log("updating quantity",cartId)
+    console.log("updating quantity delta",delta)
     const userId = localStorage.getItem('userId');
     console.log("user id-->", userId)
     setCartItems(items =>
@@ -38,6 +40,7 @@ const Cart = () => {
       )
     );
 
+  
     (async () => {
       let product_id = null;
       const data = cartItems.map((item) => {
@@ -45,17 +48,19 @@ const Cart = () => {
           product_id = item.product_id
         }
       })
-
+      
       const cart_data = {
         user_id: localStorage.getItem('userId'),
         product_id
-      }
+      };
+
+      console.log("cart data --->",cart_data)
       if (delta === 1) {
         const response = await api.addToCart(cart_data);
         console.log("response", response)
       }
       else{
-        console.log("reduce carttt")
+        console.log("reduce carttt");
         const response = await api.reduceFromCart(cart_data);
         console.log("response", response)
       }
@@ -63,12 +68,14 @@ const Cart = () => {
 
   };
 
-  const removeItem = (cartId) => {
+  const removeItem =async (cartId) => {
     setCartItems(items => items.filter(item => item.cart_id !== cartId));
-    (async () => {
+    // console.log("cart delete",JSON.parse(cartId));
+    
+    // (async () => {
       const response = await api.deleteFromCart(cartId);
-      console.log("deleted from cart", response)
-    })()
+      console.log("deleted from cart", response);
+    // })()
   };
 
   const calculateSubtotal = () => {
