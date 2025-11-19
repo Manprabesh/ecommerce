@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
-
+import { useNavigate } from 'react-router';
+import UserLayout from '../../components/UserLayout';
 const ProductCard = ({ product }) => {
+  const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const nextImage = () => {
@@ -17,14 +19,26 @@ const ProductCard = ({ product }) => {
     );
   };
 
+    async function addCart(data) {
+    const cart_data = {
+      user_id: localStorage.getItem('userId'),
+      product_id: data.product_id
+    }
+    console.log("add to cart", data);
+    const response = await api.addToCart(cart_data);
+    console.log("response from cart data", cart_data)
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
-      <div className="relative group">
+      <div className="relative group"x>
         <img
           src={product.url[currentImageIndex]}
           alt={product.name}
           className="w-full h-64 object-cover"
-        />
+           onClick={()=>navigate("/user/product",{state:product})}
+
+          />
         
         {product.url.length > 1 && (
           <>
@@ -67,7 +81,7 @@ const ProductCard = ({ product }) => {
           <span className="text-2xl font-bold text-gray-900">
             ₹{product.price}
           </span>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors" onClick={()=>addCart(product)}>
             <ShoppingCart size={18} />
             Add to Cart
           </button>
@@ -119,6 +133,7 @@ const UserHome = () => {
   }
 
   return (
+    <UserLayout>
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
@@ -133,6 +148,7 @@ const UserHome = () => {
         </div>
       </div>
     </div>
+    </UserLayout>
   );
 };
 
