@@ -21,7 +21,7 @@ export default function UserProduct() {
 
   const nextImage = () =>
     setCurrentIndex((prev) =>
-      prev === product.images.length - 1 ? 0 : prev + 1
+      prev === product.url.length - 1 ? 0 : prev + 1
     );
 
   const prevImage = () =>
@@ -63,7 +63,7 @@ export default function UserProduct() {
           {/* Image Section */}
           <div className="relative">
             <img
-              src={product.images[currentIndex]}
+              src={product.url[currentIndex]}
               alt=""
               className="w-full h-72 object-cover rounded-2xl shadow-lg border border-gray-700 transition-transform duration-300 hover:scale-105"
             />
@@ -86,7 +86,7 @@ export default function UserProduct() {
 
             {/* Dots */}
             <div className="absolute bottom-3 w-full flex justify-center gap-2">
-              {product.images.map((_, idx) => (
+              {product.url.map((_, idx) => (
                 <div
                   key={idx}
                   className={`w-2.5 h-2.5 rounded-full ${idx === currentIndex ? "bg-red-500" : "bg-gray-600"
@@ -102,7 +102,7 @@ export default function UserProduct() {
               {product.product_name}
             </h2>
             <p className="text-red-400 font-medium text-lg">
-              ₹{product.product_price.toLocaleString()}
+              ₹{product.price.toLocaleString()}
             </p>
             <p className="text-gray-300 text-sm leading-relaxed">
               {product.product_description}
