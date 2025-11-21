@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import api from "../services/api"
+import {useNavigate} from "react-router"
 
 export const Authentication = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -11,6 +13,7 @@ export const Authentication = () => {
     confirmPassword: ""
   });
   const [errors, setErrors] = useState({});
+  const navigate = useNavigate()
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -54,18 +57,27 @@ export const Authentication = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (validateForm()) {
+    // if (validateForm()) {
       if (isLogin) {
         console.log("Login data:", { email: formData.email, password: formData.password });
-        // Add your login logic here
+       const response = await api.loginUser({ email: formData.email, password: formData.password });
+       localStorage.setItem("userId",response.data.id || response.data)
+       console.log("response",response)
+       if(response.data.role==="user"){
+         navigate("/user/home")
+        }
+        else{
+
+          navigate("/admin/home")
+        }
       } else {
         console.log("Signup data:", formData);
         // Add your signup logic here
       }
-    }
+    // }
   };
 
   const toggleAuthMode = () => {
