@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import api from "../utils/ApIResponse.js";
 import generateToken from "../utils/generateJwtToken.js";
 import { encryptPassword, decryptPassword } from "../utils/encryptDecryptPassword.js";
-;
+
 
 
 export async function createUser(req, res) {
@@ -99,61 +99,53 @@ export async function createUser(req, res) {
 export async function loginUser(req, res) {
     try {
         const { email, password } = req.body;
-
         const admin_email = process.env.admin_email;
         const admind_password = process.env.admin_password;
-
         const searchQuery = `SELECT * FROM users WHERE email = $1`;
 
-        //check for admin & generate admin token
+        let cookieName = null;
+        let cookieValue = null;
+        let responseValue = null;
+
+        //check for admin else for user
         if (email === admin_email && password === admind_password) {
             const result = await pool.query(searchQuery, [email])
             console.log("getting users data -------->", result.rows[0])
-            const adminToken = generateToken(email);
-            res.cookie("adminToken", adminToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production", // only HTTPS in production
-                sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-                maxAge: 48 * 60 * 60 * 1000,
-                path: "/"
-            });
-            return res.status(200).json(api.response("admin login successfull", true, admin_email));
+            cookieName = "adminToken"
+            cookieValue = generateToken(email);
+            responseValue = admin_email;
         }
 
-        console.log("Login attempt ->", email);
+        else {
+            console.log("Login attempt ->", email);
 
-        //Check if user exists
-        const response = await pool.query(searchQuery, [email]);
-        
+            //Check if user exists
+            const response = await pool.query(searchQuery, [email]);
 
-        if (response.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
+            if (response.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            //  Compare password with hash
+            const isPasswordValid = await decryptPassword(password, response.rows[0].password);
+            if (!isPasswordValid) {
+                return res.status(401).json(api.reject("Invalid email or password"));
+            }
+
+            // Generate JWT token
+            cookieValue = generateToken(response.rows[0].email, response.rows[0].user_id);
+            cookieName = "ecommerceToken"
+            responseValue = {
+                id: response.rows[0].user_id,
+                email: response.rows[0].email,
+            }
+            console.log("✅ User logged in:", response.rows[0].email);
         }
 
-        let user = response.rows[0];
-    
-        //  Compare password with hash
-        const isPasswordValid = await decryptPassword(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid email or password",
-            });
-        }
-
-        // Generate JWT token
-        const userToken = generateToken(user.email, user.user_id);
-
-        user = {
-            id: user.user_id,
-            email: user.email,
-        }
-
-        //Set cookie securely
-        res.cookie("ecommerceToken", userToken, {
+        res.cookie(cookieName, cookieValue, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production", // only HTTPS in production
             sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
@@ -161,9 +153,7 @@ export async function loginUser(req, res) {
             path: "/"
         });
 
-        console.log("✅ User logged in:", user.email);
-        return res.status(200).json(api.response("Login successful", true, user))
-
+        return res.status(200).json(api.response("login successfull", responseValue));
 
     } catch (error) {
         console.error("❌ Error during login:", error);
