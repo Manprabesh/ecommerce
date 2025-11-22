@@ -28,7 +28,7 @@ function Payment({ address_id }) {
 
     // 2. Razorpay Options
     const options = {
-      key: "rzp_test_RfHy1EQHo0mtu9",
+      key: import.meta.env.VITE_secret_key,
       amount: response.data.order.amount,
       currency: "INR",
       order_id: response.data.order.id,
