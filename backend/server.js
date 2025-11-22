@@ -8,12 +8,13 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser())
 
-let whitelist = ['http://localhost:5173'];
-let corsOptions = {
+let whitelist = ['http://localhost:5173','http://192.168.162.191:5173'];
+let corsOptions = { 
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     origin: function (origin, callback) {
+        console.log('origin',origin);
         if (!origin || whitelist.indexOf(origin) !== -1) {
             console.log(origin)
             callback(null, true)
@@ -44,12 +45,16 @@ import productRouter from "./routes/product_router.js";
 app.use("/api/v1",productRouter)
 import categoryRouter from "./routes/category_router.js";
 app.use("/api/v1",categoryRouter);
-import { userRouter } from "./routes/user_router.js";
-app.use('/api/v1',userRouter);
+// import { userRouter } from "./routes/user_router.js";
+// app.use('/api/v1',userRouter);
 import { cartRouter } from "./routes/cart_router.js";
 app.use('/api/v1',cartRouter);
-
-
+import authRouter from "./routes/user_auth_router.js";
+app.use('/api/v1',authRouter);
+import { orderRouter } from "./routes/order_router.js";
+app.use('/api/v1',orderRouter)
+import { addressRouter } from "./routes/address_router.js";
+app.use("/api/v1",addressRouter)
 
 const PORT = 5000;
 app.listen(PORT, () => {

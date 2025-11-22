@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import api from '../../services/api';
 import UserLayout from '../../components/UserLayout';
+import { useNavigate } from 'react-router';
 
 const Cart = () => {
   const user_id = localStorage.getItem('userId');
+  const [price, setPrice] = useState(null)
   console.log("user id --->", user_id);
 
   const [cartItems, setCartItems] = useState([]);
   const [currentIndex, setCurrentIndex] = useState([]);
-
+  const navigate = useNavigate()
   useEffect(() => {
     (async () => {
       try {
@@ -17,6 +19,7 @@ const Cart = () => {
         console.log("response", response);
         if (response.success) {
           setCartItems(response.data);
+          // localStorage.setItem('cart',{quantity:response.data.length, })
           // Initialize index array for each product
           setCurrentIndex(new Array(response.data.length).fill(0));
         }
@@ -28,8 +31,8 @@ const Cart = () => {
   }, []);
 
   const updateQuantity = (cartId, delta) => {
-    console.log("updating quantity",cartId)
-    console.log("updating quantity delta",delta)
+    console.log("updating quantity", cartId)
+    console.log("updating quantity delta", delta)
     const userId = localStorage.getItem('userId');
     console.log("user id-->", userId)
     setCartItems(items =>
@@ -40,7 +43,7 @@ const Cart = () => {
       )
     );
 
-  
+
     (async () => {
       let product_id = null;
       const data = cartItems.map((item) => {
@@ -48,18 +51,18 @@ const Cart = () => {
           product_id = item.product_id
         }
       })
-      
+
       const cart_data = {
         user_id: localStorage.getItem('userId'),
         product_id
       };
 
-      console.log("cart data --->",cart_data)
+      console.log("cart data --->", cart_data)
       if (delta === 1) {
         const response = await api.addToCart(cart_data);
         console.log("response", response)
       }
-      else{
+      else {
         console.log("reduce carttt");
         const response = await api.reduceFromCart(cart_data);
         console.log("response", response)
@@ -68,13 +71,13 @@ const Cart = () => {
 
   };
 
-  const removeItem =async (cartId) => {
+  const removeItem = async (cartId) => {
     setCartItems(items => items.filter(item => item.cart_id !== cartId));
     // console.log("cart delete",JSON.parse(cartId));
-    
+
     // (async () => {
-      const response = await api.deleteFromCart(cartId);
-      console.log("deleted from cart", response);
+    const response = await api.deleteFromCart(cartId);
+    console.log("deleted from cart", response);
     // })()
   };
 
@@ -83,7 +86,11 @@ const Cart = () => {
   };
 
   const calculateTax = () => calculateSubtotal() * 0.18;
-  const calculateTotal = () => calculateSubtotal() + calculateTax();
+  const calculateTotal = () => {
+    const value = calculateSubtotal() + calculateTax();
+    // setPrice(value);
+    return value;
+  };
 
   const nextImage = (index) => {
     setCurrentIndex((prev) => {
@@ -115,6 +122,18 @@ const Cart = () => {
         </div>
       </div>
     );
+  }
+
+  function checkOut() {
+    let products = [];
+    for (let i = 0; i < cartItems.length; i++) {
+      console.log("cart Item", cartItems[i]);
+      products.push(cartItems[i].product_id);
+    }
+    localStorage.setItem('products', JSON.stringify(products))
+    localStorage.setItem('total_price', JSON.stringify(calculateTotal()))
+    console.log("_____products", JSON.parse(localStorage.getItem("products")))
+    navigate("/user/address")
   }
 
   return (
@@ -236,7 +255,7 @@ const Cart = () => {
                   </div>
                 </div>
 
-                <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mb-3">
+                <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mb-3" onClick={checkOut}>
                   Proceed to Checkout
                 </button>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Trash } from 'lucide-react';
 import api from "../../services/api";
-
+import AdminLayout from "../../components/AdminLayout"
 function Category() {
     const [category, setCategory] = useState([]);
     const [displayCategory, setDisplayCategory] = useState([]);
@@ -49,6 +49,7 @@ function Category() {
 
 
     return (
+        <AdminLayout>
         <div className="bg-zinc-900 h-screen">
             <div className="flex flex-col justify-center ml-30">
 
@@ -71,6 +72,7 @@ function Category() {
 
 
         </div>
+        </AdminLayout>
     )
 }
 

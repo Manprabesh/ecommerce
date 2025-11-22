@@ -113,7 +113,10 @@ export async function loginUser(req, res) {
             console.log("getting users data -------->", result.rows[0])
             cookieName = "adminToken"
             cookieValue = generateToken(email);
-            responseValue = admin_email;
+            responseValue = {
+                email:admin_email,
+                role:"admin"
+            };
         }
 
         else {
@@ -141,6 +144,7 @@ export async function loginUser(req, res) {
             responseValue = {
                 id: response.rows[0].user_id,
                 email: response.rows[0].email,
+                role:"user"
             }
             console.log("✅ User logged in:", response.rows[0].email);
         }

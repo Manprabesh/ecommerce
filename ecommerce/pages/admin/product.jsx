@@ -58,7 +58,7 @@ export default function Product() {
           console.log("--------------------",file)
           formData.append(`file${i}`, file);
           console.log("data",formData.get(`file${i}`))
-          await api.upload_to_aws(response.data[i], file);
+          await api.upload_to_aws(response.data.url[i], file);
         })
       );
 
@@ -100,7 +100,7 @@ export default function Product() {
           {[0, 1, 2].map((i) => (
             <img
               key={i}
-              src={imgData[i] || ""}
+              src={imgData[i] || null}
               alt=""
               className={`h-100 w-100 rounded-2xl ${imgData[i] ? "" : "bg-amber-700"}`}
             />

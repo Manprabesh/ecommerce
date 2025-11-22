@@ -183,7 +183,7 @@ export async function getAllProduct(req, res) {
                 return presignedUrl;
             }))
              return {
-                id: data.id,
+                product_id: data.id,
                 name: data.name,
                 price: data.price,
                 description: data.description,
