@@ -10,8 +10,8 @@ import { encryptPassword, decryptPassword } from "../utils/encryptDecryptPasswor
 export async function createUser(req, res) {
     try {
 
-        const email = req.body.category_name.email;
-        const password = req.body.category_name.password;
+        const email = req.body.email;
+        const password = req.body.password;
 
         /**
          * Getting the admin email and admin password
@@ -19,54 +19,49 @@ export async function createUser(req, res) {
 
         const admind_email = process.env.admin_email;
         const admind_password = process.env.admin_password;
-        console.log("creating user", admind_email)
+        console.log("creating user", email)
 
         let hashedPassword = null;
 
         const searchQuery = `SELECT * from users where email = $1`;
+        let response = await pool.query(searchQuery, [email]);
+        console.log("response",response.rows[0])
+        if (email === admind_email || response.rows.length > 0) {
 
-        if (email == admind_email && password == admind_password) {
-            const response = await pool.query(searchQuery, [email]);
-            if (response.rows.length > 0) {
-                return res.status(409).json(
-                    api.response("admin already exist", false)
-                )
-            }
-            else {
-                hashedPassword = await encryptPassword(password);
-                const insertQuery = {
-                    text: `INSERT INTO users(email, password, role) VALUES ($1, $2, $3) RETURNING user_id, email, role;`,
-                    values: [email, hashedPassword, "admin"]
-                }
-                const adminData = await pool.query(insertQuery);
-
-                console.log("admin data ---------->", adminData.rows[0]['user_id']);
-                const adminToken = generateToken(email, adminData.rows[0]['user_id']);
-
-                res.cookie("adminToken", adminToken, {
-                    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === "production" ? true : false,
-                    maxAge: 48 * 60 * 60 * 1000,
-                    path: "/",
-                });
-
-                return res.status(201).json(
-                    api.response("admin created successfully", true, adminData.rows[0])
-                );
-            }
+            return res.status(409).json(
+                api.response("Useralready exist", false)
+            )
         }
 
-        const response = await pool.query(searchQuery, [email]);
+        // else {
+        //     hashedPassword = await encryptPassword(password);
+        //     const insertQuery = {
+        //         text: `INSERT INTO users(email, password, role) VALUES ($1, $2, $3) RETURNING user_id, email, role;`,
+        //         values: [email, hashedPassword, "admin"]
+        //     }
+        //     const adminData = await pool.query(insertQuery);
+
+        //     console.log("admin data ---------->", adminData.rows[0]['user_id']);
+        //     const adminToken = generateToken(email, adminData.rows[0]['user_id']);
+
+        //     res.cookie("adminToken", adminToken, {
+        //         sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+        //         httpOnly: true,
+        //         secure: process.env.NODE_ENV === "production" ? true : false,
+        //         maxAge: 48 * 60 * 60 * 1000,
+        //         path: "/",
+        //     });
+
+        //     return res.status(201).json(
+        //         api.response("admin created successfully", true, adminData.rows[0])
+        //     );
+        // }
+
+
+        // const response = await pool.query(searchQuery, [email]);
 
         // console.log('response in user created ->', response);
-        if (response.rows.length > 0) {
 
-            return res.status(409).json({
-                success: false,
-                message: "user already exist"
-            })
-        }
         hashedPassword = await encryptPassword(password);
         console.log("hashpassword", hashedPassword);
         const insertQuery = {
@@ -114,8 +109,8 @@ export async function loginUser(req, res) {
             cookieName = "adminToken"
             cookieValue = generateToken(email);
             responseValue = {
-                email:admin_email,
-                role:"admin"
+                email: admin_email,
+                role: "admin"
             };
         }
 
@@ -144,7 +139,7 @@ export async function loginUser(req, res) {
             responseValue = {
                 id: response.rows[0].user_id,
                 email: response.rows[0].email,
-                role:"user"
+                role: "user"
             }
             console.log("✅ User logged in:", response.rows[0].email);
         }

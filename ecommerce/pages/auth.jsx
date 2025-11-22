@@ -7,7 +7,6 @@ export const Authentication = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
     password: "",
     confirmPassword: ""
@@ -33,9 +32,9 @@ export const Authentication = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!isLogin && !formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
+    // if (!isLogin && !formData.name.trim()) {
+    //   newErrors.name = "Name is required";
+    // }
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
@@ -75,7 +74,10 @@ export const Authentication = () => {
         }
       } else {
         console.log("Signup data:", formData);
-        // Add your signup logic here
+        const response = await api.createUser({ email: formData.email, password: formData.password })
+        if(response.success){
+          navigate("/user/home");
+        }
       }
     // }
   };
@@ -111,30 +113,30 @@ export const Authentication = () => {
           {/* Form */}
           <div className="p-8">
             <div className="space-y-5">
-              {/* Name Field (Signup only) */}
-              {!isLogin && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700 block">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="Enter your full name"
-                      className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 ${
-                        errors.name ? "border-red-500" : "border-gray-200"
-                      }`}
-                    />
-                  </div>
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-                  )}
-                </div>
-              )}
+              {/* Name Field (Signup only)
+              // {!isLogin && (
+              //   <div className="space-y-2">
+              //     <label className="text-sm font-semibold text-gray-700 block">
+              //       Full Name
+              //     </label>
+              //     <div className="relative">
+              //       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              //       <input
+              //         type="text"
+              //         name="name"
+              //         value={formData.name}
+              //         onChange={handleInputChange}
+              //         placeholder="Enter your full name"
+              //         className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 ${
+              //           errors.name ? "border-red-500" : "border-gray-200"
+              //         }`}
+              //       />
+              //     </div>
+              //     {errors.name && (
+              //       <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+              //     )}
+              //   </div>
+              // )} */}
 
               {/* Email Field */}
               <div className="space-y-2">

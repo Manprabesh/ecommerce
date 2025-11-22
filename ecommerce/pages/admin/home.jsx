@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash } from 'lucide-react';
 import api from '../../services/api';
+import AdminLayout from '../../components/AdminLayout';
 
 const ProductCard = ({ product }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -68,8 +69,8 @@ const ProductCard = ({ product }) => {
             ₹{product.price}
           </span>
           <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
-            <ShoppingCart size={18} />
-            Add to Cart
+            <Trash size={18} />
+            Delete
           </button>
         </div>
       </div>
@@ -119,6 +120,7 @@ const Home = () => {
   }
 
   return (
+    <AdminLayout>
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
@@ -133,6 +135,7 @@ const Home = () => {
         </div>
       </div>
     </div>
+    </AdminLayout>
   );
 };
 

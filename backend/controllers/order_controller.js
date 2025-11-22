@@ -161,7 +161,7 @@ export async function getAllOrders(req, res) {
 
 
         console.log("results ", result.rows)
-        return res.status(200).json(api.response("fetch all user products", true, ordered_products))
+        return res.status(200).json(api.response("fetch all user products", ordered_products))
     } catch (error) {
         console.error("Error in get order controller", error);
         return res.status(500).json(api.reject("Internal server error", error));

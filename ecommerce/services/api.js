@@ -130,9 +130,7 @@ class Api {
         const response = await this.makeRequest('/create/user', {
             method: "POST",
             credentials: "include",
-            body: JSON.stringify({
-                category_name: data
-            }),
+            body: JSON.stringify(data),
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
@@ -250,6 +248,17 @@ class Api {
             }),
         })
         return result
+    }
+
+    async getAllOrders(userId) {
+        const response = await this.makeRequest(`/get/orders/${userId}`, {
+            method: "GET",
+            credentials: "include",
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        return response;
     }
 }
 const api = new Api()

@@ -12,13 +12,14 @@ import UserHome from '../pages/user/home'
 import Cart from '../pages/user/cart'
 import Payment from '../pages/user/payment'
 import { AddressCard } from '../pages/user/address'
+import Order from '../pages/user/order'
 function App() {
-  const [count, setCount] = useState(0)
+
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/auth" element={<Authentication />} />
+        <Route path="/" element={<Authentication />} />
         <Route path="/admin/products" element={<Product />} />
         <Route path="/admin/home" element={<Home />} />
         <Route path="/admin/create/products" element={<Category />} />
@@ -27,6 +28,7 @@ function App() {
         <Route path="/user/home" element={<UserHome />} />
         <Route path="/user/cart" element={<Cart />} />
         <Route path="/user/payment" element={<Payment />} />
+        <Route path="/user/orders" element={<Order />} />
         {/* <Route path="" element={<AddressCard />} /> */}
 
       
