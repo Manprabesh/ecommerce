@@ -1,100 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
 import { useNavigate } from 'react-router';
 import UserLayout from '../../components/UserLayout';
-const ProductCard = ({ product }) => {
-  const navigate = useNavigate();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === product.url.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? product.url.length - 1 : prev - 1
-    );
-  };
-
-    async function addCart(data) {
-    const cart_data = {
-      user_id: localStorage.getItem('userId'),
-      product_id: data.product_id
-    }
-    console.log("add to cart", data);
-    const response = await api.addToCart(cart_data);
-    console.log("response from cart data", cart_data)
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
-      <div className="relative group"x>
-        <img
-          src={product.url[currentImageIndex]}
-          alt={product.name}
-          className="w-full h-64 object-cover"
-           onClick={()=>navigate("/user/product",{state:product})}
-
-          />
-        
-        {product.url.length > 1 && (
-          <>
-            <button
-              onClick={prevImage}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-              onClick={nextImage}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ChevronRight size={20} />
-            </button>
-            
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-              {product.url.map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 rounded-full ${
-                    index === currentImageIndex ? 'bg-white' : 'bg-white/50'
-                  }`}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-800 capitalize mb-2">
-          {product.name}
-        </h3>
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-          {product.description}
-        </p>
-        
-        <div className="flex items-center justify-between">
-          <span className="text-2xl font-bold text-gray-900">
-            ₹{product.price}
-          </span>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors" onClick={()=>addCart(product)}>
-            <ShoppingCart size={18} />
-            Add to Cart
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
+import { AuthContext } from '../../components/AuthContext';
+import Loader from '../../components/Loader';
+import { ProductCard } from '../../components/ProductCard';
+import { usePopup } from '../../components/popUpContext';
+import {SearchBar,FilterSection} from "../../components/SearchBar"
 const UserHome = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState(["shirt","pants"])
+  const [filters, setFilters] = useState({
+    categories: [],
+    priceRange: null,
+    minRating: 0,
+    inStock: null
+  });
 
   useEffect(() => {
     (async () => {
@@ -111,15 +36,49 @@ const UserHome = () => {
     })();
   }, []);
 
+  // Extract unique categories from products
+  // const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  };
+
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      categories: [],
+      priceRange: null,
+      minRating: 0,
+      inStock: null
+    });
+  };
+
+  // Apply filters to products
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = !searchQuery || 
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory = filters.categories.length === 0 || 
+      filters.categories.includes(product.category);
+
+    const matchesPrice = !filters.priceRange || 
+      (product.price >= filters.priceRange.min && product.price <= filters.priceRange.max);
+
+    const matchesRating = filters.minRating === 0 || 
+      (product.rating && product.rating >= filters.minRating);
+
+    const matchesStock = filters.inStock === null || 
+      product.inStock === filters.inStock;
+
+    return matchesSearch && matchesCategory && matchesPrice && matchesRating && matchesStock;
+  });
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading products...</p>
-        </div>
-      </div>
-    );
+    return <Loader />;
   }
 
   if (error) {
@@ -133,23 +92,75 @@ const UserHome = () => {
   }
 
   return (
-    <UserLayout>
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Our Products</h1>
-          <p className="text-gray-600">Browse our collection of quality items</p>
+   <UserLayout>
+  <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 mt-10 sm:mt-12 lg:mt-10">
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
+          Our Products
+        </h1>
+        <p className="text-sm sm:text-base text-gray-600">
+          Browse our collection of quality items
+        </p>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-6 sm:mb-8">
+        <SearchBar onSearch={handleSearch} placeholder="Search for products..." />
+      </div>
+
+      {/* Main Content with Sidebar */}
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+        {/* Sidebar Filter - Hidden on mobile (handled by FilterSection component) */}
+        <div className="hidden lg:block w-64 flex-shrink-0">
+          <FilterSection 
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+            categories={categories}
+          />
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.product_id} product={product} />
-          ))}
+
+        {/* Mobile Filter - Visible only on mobile (handled by FilterSection component) */}
+        <div className="lg:hidden">
+          <FilterSection 
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+            categories={categories}
+          />
+        </div>
+
+        {/* Products Grid */}
+        <div className="flex-1 w-full">
+          {filteredProducts.length > 0 ? (
+            <>
+              <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
+                Showing {filteredProducts.length} of {products.length} products
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.product_id} product={product} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8 sm:py-12 bg-white rounded-lg">
+              <p className="text-base sm:text-lg text-gray-500">No products found</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-2">
+                Try adjusting your filters or search
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
-    </UserLayout>
+  </div>
+</UserLayout>
   );
 };
 
-export default UserHome;
+// export default UserHome;
+
+  export default UserHome;
