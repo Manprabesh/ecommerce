@@ -2,7 +2,7 @@ import pool from "../config/database.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import api from "../utils/ApIResponse.js";
-import generateToken from "../utils/generateJwtToken.js";
+import {generateToken} from "../utils/generateJwtToken.js";
 import { encryptPassword, decryptPassword } from "../utils/encryptDecryptPassword.js";
 
 
@@ -25,48 +25,23 @@ export async function createUser(req, res) {
 
         const searchQuery = `SELECT * from users where email = $1`;
         let response = await pool.query(searchQuery, [email]);
-        console.log("response",response.rows[0])
-        if (email === admind_email || response.rows.length > 0) {
+        console.log("response",response.rows[0]);
+        let role = (email === admind_email ? "admin":"user");
+        console.log("role --->",role)
+
+        if (email === admind_email && response.rows.length > 0) {
 
             return res.status(409).json(
                 api.response("Useralready exist", false)
             )
         }
-
-        // else {
-        //     hashedPassword = await encryptPassword(password);
-        //     const insertQuery = {
-        //         text: `INSERT INTO users(email, password, role) VALUES ($1, $2, $3) RETURNING user_id, email, role;`,
-        //         values: [email, hashedPassword, "admin"]
-        //     }
-        //     const adminData = await pool.query(insertQuery);
-
-        //     console.log("admin data ---------->", adminData.rows[0]['user_id']);
-        //     const adminToken = generateToken(email, adminData.rows[0]['user_id']);
-
-        //     res.cookie("adminToken", adminToken, {
-        //         sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-        //         httpOnly: true,
-        //         secure: process.env.NODE_ENV === "production" ? true : false,
-        //         maxAge: 48 * 60 * 60 * 1000,
-        //         path: "/",
-        //     });
-
-        //     return res.status(201).json(
-        //         api.response("admin created successfully", true, adminData.rows[0])
-        //     );
-        // }
-
-
-        // const response = await pool.query(searchQuery, [email]);
-
-        // console.log('response in user created ->', response);
+        console.log("admin is creating")
 
         hashedPassword = await encryptPassword(password);
         console.log("hashpassword", hashedPassword);
         const insertQuery = {
-            text: `INSERT INTO users(email, password) VALUES ($1, $2) RETURNING user_id, email, role;`,
-            values: [email, hashedPassword]
+            text: `INSERT INTO users(email, password, role) VALUES ($1, $2, $3) RETURNING user_id, email, role;`,
+            values: [email, hashedPassword, role]
         }
 
         const result = await pool.query(insertQuery)
@@ -106,8 +81,8 @@ export async function loginUser(req, res) {
         if (email === admin_email && password === admind_password) {
             const result = await pool.query(searchQuery, [email])
             console.log("getting users data -------->", result.rows[0])
-            cookieName = "adminToken"
-            cookieValue = generateToken(email);
+            cookieName = "ecommerceToken"
+            cookieValue = generateToken(result.rows[0].email,result.rows[0].user_id);
             responseValue = {
                 email: admin_email,
                 role: "admin"
@@ -115,7 +90,6 @@ export async function loginUser(req, res) {
         }
 
         else {
-            console.log("Login attempt ->", email);
 
             //Check if user exists
             const response = await pool.query(searchQuery, [email]);
