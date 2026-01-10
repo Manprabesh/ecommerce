@@ -8,10 +8,23 @@ import Loader from "../../components/Loader";
 
 import { X, Image } from 'lucide-react';
 
-const UploadCard = ({ onClose }) => {
+const ProductUploadCard = ({ onClose }) => {
     const [category, setCategory] = useState([]);
     const { showPopup } = usePopup();
     const [loader, setLoader] = useState(false);
+    const [showImg, setShowImg] = useState('')
+    const [imgCard, setImgCard] = useState(false)
+    const [imgToUpload, setImgToUpload] = useState([])
+    const [imgUrl, setImgUrl] = useState([]);
+    const [selectedFile, setSelectedFile] = useState([]);
+    const [formData, setFormData] = useState({
+        name: '',
+        price: '',
+        category: '',
+        description: '',
+        quantity: '',
+        product: '',
+    });
 
     useEffect(() => {
         (async () => {
@@ -31,6 +44,7 @@ const UploadCard = ({ onClose }) => {
         }
     }, []);
 
+
     useEffect(() => {
 
         document.addEventListener('keydown', handleEscKey);
@@ -39,20 +53,7 @@ const UploadCard = ({ onClose }) => {
         };
     }, [handleEscKey]);
 
-    const [selectedFile, setSelectedFile] = useState([]);
-    const [formData, setFormData] = useState({
-        name: '',
-        price: '',
-        category: '',
-        description: '',
-        quantity: '',
-        product: '',
-    });
 
-    const [showImg, setShowImg] = useState('')
-    const [imgCard, setImgCard] = useState(false)
-    const [imgToUpload, setImgToUpload] = useState([])
-    const [imgUrl, setImgUrl] = useState([]);
 
     const handleFileChange = (e) => {
 
@@ -82,6 +83,7 @@ const UploadCard = ({ onClose }) => {
             description: formData.description,
             category: formData.category,
             product: imgToUpload,
+            quantity: formData.quantity
         };
 
         const requiredFields = [
@@ -90,6 +92,7 @@ const UploadCard = ({ onClose }) => {
             productData.price,
             productData.description,
             productData.product,
+            productData.quantity
         ];
 
         const hasEmptyField = requiredFields.some(
@@ -339,7 +342,30 @@ const UploadCard = ({ onClose }) => {
 }
 
 const Hero = () => {
-    const [showUploadCard, setShowUploadCard] = useState(false)
+    const [showCard, setShowCard] = useState(false)
+    const [loader, setLoader] = useState(true);
+    const [products, setProducts] = useState([]);
+    const [component, setComponent] = useState(null)
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const response = await api.getAllProduct();
+                console.log("response ", response.data.productData);
+                setProducts(response.data.productData || []);
+            } catch (err) {
+                console.error("Error fetching products:", err);
+                setError("Failed to load products");
+            } finally {
+                setLoader(false);
+            }
+        })();
+    }, [])
+
+    const handleComponent = (component) => {
+        setShowCard(!showCard)
+        setComponent(component)
+    }
     return (
         <>
             <div>
@@ -352,7 +378,7 @@ const Hero = () => {
 
                             <span className="text-xl text-white">Total no. of product</span>
                             <h5 className="mt-3 mb-4 text-4xl font-semibold tracking-tight text-heading text-white">
-                                50
+                                {products.length}
                             </h5>
 
                             <a href="#" className="inline-flex items-center text-white bg-brand hover:bg-brand-strong shadow-xs font-medium rounded-base text-xs px-3 py-1.5">
@@ -365,7 +391,7 @@ const Hero = () => {
                             </a>
                         </div>
                     </div>
-                    <div className="bg-green-500 block max-w-xs  rounded-xl shadow-xs ">
+                    <div className="bg-green-500 block max-w-xs  rounded-xl shadow-xs " onClick={() => handleComponent(<CategoryManageCard onClose={() => setShowCard(!Upload)} />)}>
 
                         <div className="p-4 text-center">
 
@@ -384,7 +410,7 @@ const Hero = () => {
                             </a>
                         </div>
                     </div>
-                    <div className="bg-red-500 block max-w-xs  rounded-xl shadow-xs " onClick={() => setShowUploadCard(!showUploadCard)}>
+                    <div className="bg-red-500 block max-w-xs  rounded-xl shadow-xs " onClick={() => handleComponent(<ProductUploadCard onClose={() => setShowCard(!Upload)} />)}>
 
                         <div className="p-4 text-center">
 
@@ -396,14 +422,214 @@ const Hero = () => {
                         </div>
                     </div>
 
-                    {showUploadCard && <UploadCard onClose={() => setShowUploadCard(!Upload)} />}
+                    {showCard && component}
 
+                </div>
+                <div className="ml-50 mr-40 mt-10">
+                    <div className="flex items-center justify-between w-full px-6 py-3 
+                    bg-neutral-800 border border-neutral-700 rounded-lg 
+                    text-sm font-semibold text-neutral-300">
+
+                        <div className="w-1/6">Product ID</div>
+                        <div className="w-1/5">Category</div>
+                        <div className="w-2/5">Product Name</div>
+                        <div className="w-1/6 text-right">Price</div>
+                        <div className="w-1/6 text-right">Quantity</div>
+                    </div>
+                    {
+                        products?.map((p, indx) => {
+                            return (
+                                <ProductRow
+                                    key={indx}
+                                    id={p.product_id}
+                                    category={p.category}
+                                    name={p.name}
+                                    price={p.price}
+                                    quantity={p.quantity}
+                                />
+                            )
+                        })
+                    }
 
                 </div>
 
+                {loader && <Loader />}
             </div>
         </>
     )
 }
+
+const ProductRow = ({ id, category, name, price, quantity }) => {
+    return (
+        <div className="flex items-center justify-between w-full px-6 py-4 bg-neutral-900 border border-neutral-700 rounded-lg">
+
+            {/* Product ID */}
+            <div className="w-1/6 text-sm text-neutral-400 truncate">
+                #{id}
+            </div>
+
+            {/* Category */}
+            <div className="w-1/5 text-sm text-blue-400 font-medium truncate">
+                {category}
+            </div>
+
+            {/* Product Name */}
+            <div className="w-2/5 text-base text-white font-semibold truncate">
+                {name}
+            </div>
+
+            {/* Price */}
+            <div className="w-1/6 text-right text-green-400 font-semibold">
+                ₹{price}
+            </div>
+
+            <div className="w-1/6 text-right text-green-400 font-semibold">
+                {quantity || 0}
+            </div>
+
+        </div>
+    );
+};
+
+const CategoryManageCard = ({ onClose }) => {
+    const [categories, setCategory] = useState([]);
+    const { showPopup } = usePopup();
+    const [loader, setLoader] = useState(false);
+    const [showImg, setShowImg] = useState('')
+    const [imgCard, setImgCard] = useState(false)
+    const [imgToUpload, setImgToUpload] = useState([])
+    const [imgUrl, setImgUrl] = useState([]);
+    const [selectedFile, setSelectedFile] = useState([]);
+    const [formData, setFormData] = useState('');
+    // const [category, setCategory] = useState([]);
+
+    useEffect(() => {
+        async function fetchCategory() {
+            try {
+                const response = await api.getCategory();
+                console.log("fetching data ------->", response.category);
+                setCategory(response.category);
+                console.log("oknoknno", categories);
+
+            } catch (error) {
+                console.error("Failed to fetch category:", error);
+            }
+        }
+
+        fetchCategory();
+        console.log("data"); // runs immediately
+    }, []);
+
+
+    async function createCategory(e) {
+        // console.log("reading category",e.target.value);
+        setCategory(prev => [...prev, formData]);
+        console.log("--------------",categories);
+        console.log("creating category------>", formData)
+
+        // const response = await api.createCategory(categoryRef.current.value);
+        // console.log("category uploaded to database", response);
+
+    }
+
+
+    const handleInputChange = (e) => {
+        setFormData(e.target.value);
+    };
+
+    // const categories = ['o',"sdf","sfdg"]
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            {loader && <Loader message="Uploading product..." />}
+
+            <div className="w-[90vw] max-w-6xl h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col">
+
+                {/* Header */}
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                        Manage Categories
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 grid grid-cols-3 gap-6 p-6 overflow-hidden">
+
+                    {/* LEFT: Category List */}
+                    <div className="col-span-2 border border-gray-200 rounded-xl overflow-y-auto">
+                        <div className="sticky top-0 bg-gray-50 px-4 py-3 border-b font-semibold text-gray-700">
+                            Categories
+                        </div>
+
+                        <ul className="divide-y">
+                            {categories?.map((cat,index) => {
+                                console.log("reading categories", cat)
+                                return (
+                                    <li
+                                        key={cat.category_id || index}
+                                        className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                                    >
+                                        <span className="text-gray-800 font-medium">
+                                            {cat.category_name}
+                                        </span>
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleUpdate(cat)}
+                                                className="px-3 py-1.5 text-sm rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                            >
+                                                Update
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(cat.id)}
+                                                className="px-3 py-1.5 text-sm rounded-md bg-red-100 text-red-700 hover:bg-red-200"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </li>)
+                            })}
+                        </ul>
+                    </div>
+
+                    {/* RIGHT: Add Category */}
+                    <div className="border border-gray-200 rounded-xl p-4 flex flex-col">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                            Add Category
+                        </h3>
+
+                        <input
+                            type="text"
+                            name="name"
+                            value={formData}
+                            onChange={handleInputChange}
+                            placeholder="Enter category name"
+                            className="w-full border border-gray-300 rounded-lg px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-500"
+                        />
+
+                        <button
+                            onClick={createCategory}
+                            className="mt-auto px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                        >
+                            <Upload size={18} />
+                            Add Category
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    )
+}
+
+
 
 export default Hero;
