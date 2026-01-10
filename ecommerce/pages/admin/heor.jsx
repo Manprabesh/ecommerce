@@ -1,26 +1,43 @@
 import { useEffect } from "react";
 import { Upload } from 'lucide-react';
 import { useState, useCallback } from "react";
+import api from "../../services/api";
+import Popup from "../../components/PopUp";
+import { usePopup } from "../../components/popUpContext"
+import Loader from "../../components/Loader";
 
 import { X, Image } from 'lucide-react';
 
 const UploadCard = ({ onClose }) => {
+    const [category, setCategory] = useState([]);
+    const { showPopup } = usePopup();
+    const [loader, setLoader] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const response = await api.getAllCategory();
+                if (response.category?.length) setCategory(response.category);
+            } catch (err) {
+                console.error("Failed to fetch categories:", err);
+            }
+        })();
+    }, []);
 
     const handleEscKey = useCallback((event) => {
-  
+
         if (event.key === 'Escape') {
             onClose()
         }
     }, []);
 
     useEffect(() => {
-      
-        document.addEventListener('keydown', handleEscKey);
 
+        document.addEventListener('keydown', handleEscKey);
         return () => {
             document.removeEventListener('keydown', handleEscKey);
         };
-    }, [handleEscKey]); 
+    }, [handleEscKey]);
 
     const [selectedFile, setSelectedFile] = useState([]);
     const [formData, setFormData] = useState({
@@ -28,23 +45,24 @@ const UploadCard = ({ onClose }) => {
         price: '',
         category: '',
         description: '',
-        quantity:'',
-        product:'',
+        quantity: '',
+        product: '',
     });
 
     const [showImg, setShowImg] = useState('')
     const [imgCard, setImgCard] = useState(false)
     const [imgToUpload, setImgToUpload] = useState([])
+    const [imgUrl, setImgUrl] = useState([]);
 
     const handleFileChange = (e) => {
 
         const blob = URL.createObjectURL(e.target.files[0]);
-        console.log("all files", e.target.files[0].name, e.target.files[0].type);
         if (e.target.files && e.target.files[0]) {
             setSelectedFile((prev) => [...prev, blob]);
             setImgToUpload((prev) => [...prev, { name: e.target.files[0].name, type: e.target.files[0].type }]);
+            setImgUrl((prev) => [...prev, e.target.files[0]])
         }
-        // console.log("Selected file", selectedFile)
+
     };
 
     const handleInputChange = (e) => {
@@ -55,21 +73,64 @@ const UploadCard = ({ onClose }) => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-      const productData = {
-        name: formData.name,
-        price:formData.price,
-        description : formData.description,
-        category: formData.category,
-        product: imgToUpload,
-      };
-        // setFormData((prev)=>({...prev,product:imgToUpload}));
-        console.log('Form submitted:', productData);
+        const productData = {
+            name: formData.name,
+            price: formData.price,
+            description: formData.description,
+            category: formData.category,
+            product: imgToUpload,
+        };
 
-        //upload product here
-        
+        const requiredFields = [
+            productData.category,
+            productData.name,
+            productData.price,
+            productData.description,
+            productData.product,
+        ];
+
+        const hasEmptyField = requiredFields.some(
+            field => !field || field.toString().trim().length === 0
+        );
+
+        console.log('Form submitted:', productData.name.length);
+
+        if (hasEmptyField) {
+            showPopup({
+                message: "All fields are required",
+                type: "Missing field",
+                duration: 4000,
+            });
+        }
+        else {
+
+            try {
+                setLoader(true);
+                const response = await api.uploadProduct(productData);
+                const formData = new FormData();
+                await Promise.all(
+                    imgUrl.map(async (file, i) => {
+                        formData.append(`file${i}`, file);
+                        await api.upload_to_aws(response.data.url[i], file);
+                    })
+                );
+            } catch (error) {
+                console.log("error while uploading product", error.message)
+            } finally {
+                setLoader(false);
+                showPopup({
+                    message: "Product uploaded successfully",
+                    type: "Product upload"
+                })
+            }
+        }
+
+
+
+
     };
 
     const handleImg = (file) => {
@@ -79,6 +140,7 @@ const UploadCard = ({ onClose }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            {loader && <Loader message="Uploading product..." />}
             <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
@@ -130,13 +192,13 @@ const UploadCard = ({ onClose }) => {
                                     className="w-full border border-gray-300 rounded-lg pl-8 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ml-2  "
                                 />
                             </div>
-                        </div> 
+                        </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Total quantity
                             </label>
                             <div className="relative">
-                              
+
                                 <input
                                     type="number"
                                     name="quantity"
@@ -157,13 +219,16 @@ const UploadCard = ({ onClose }) => {
                                 value={formData.category}
                                 onChange={handleInputChange}
                                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer"
+                                placeholder="select category"
+
+
                             >
                                 <option value="">Select category</option>
-                                <option value="electronics">Electronics</option>
-                                <option value="fashion">Fashion</option>
-                                <option value="home">Home & Living</option>
-                                <option value="sports">Sports</option>
-                                <option value="books">Books</option>
+                                {category.map(cat => (
+                                    <option value={cat.category_name} key={cat.category_id}>
+                                        {cat.category_name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -280,7 +345,7 @@ const Hero = () => {
             <div>
                 {/* Card section */}
                 <div className="grid grid-cols-3 ml-50 mr-40 mt-20">
-              
+
                     <div className="bg-blue-500 block max-w-xs  rounded-xl shadow-xs ">
 
                         <div className="p-4 text-center">
