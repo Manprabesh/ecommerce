@@ -5,7 +5,7 @@ import api from "../../services/api";
 import Popup from "../../components/PopUp";
 import { usePopup } from "../../components/popUpContext"
 import Loader from "../../components/Loader";
-
+import { Link } from "react-router";
 import { X, Image } from 'lucide-react';
 
 const ProductUploadCard = ({ onClose }) => {
@@ -381,14 +381,14 @@ const Hero = () => {
                                 {products.length}
                             </h5>
 
-                            <a href="#" className="inline-flex items-center text-white bg-brand hover:bg-brand-strong shadow-xs font-medium rounded-base text-xs px-3 py-1.5">
+                            <Link to="/admin/home/" className="inline-flex items-center text-white bg-brand hover:bg-brand-strong shadow-xs font-medium rounded-base text-xs px-3 py-1.5">
                                 Read more
                                 <svg className="w-4 h-4 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
                                     viewBox="0 0 24 24">
                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 12H5m14 0-4 4m4-4-4-4" />
                                 </svg>
-                            </a>
+                            </Link>
                         </div>
                     </div>
                     <div className="bg-green-500 block max-w-xs  rounded-xl shadow-xs " onClick={() => handleComponent(<CategoryManageCard onClose={() => setShowCard(!Upload)} />)}>
@@ -501,47 +501,117 @@ const CategoryManageCard = ({ onClose }) => {
     const [imgUrl, setImgUrl] = useState([]);
     const [selectedFile, setSelectedFile] = useState([]);
     const [formData, setFormData] = useState('');
-    // const [category, setCategory] = useState([]);
+    const [loaderMessage, setLoaderMessage] = useState();
+    // const [showInput, setShowInput] = useState(false)
+    const [editingId, setEditingId] = useState(null);
+    const [editValue, setEditValue] = useState("");
+
 
     useEffect(() => {
+        console.log("categories length", categories.length)
+        setLoaderMessage("Fetching categories...")
+        setLoader(true);
         async function fetchCategory() {
             try {
+
                 const response = await api.getCategory();
-                console.log("fetching data ------->", response.category);
-                setCategory(response.category);
-                console.log("oknoknno", categories);
+                // console.log("fetching data ------->", response.category);
+                if (response.success) {
+                    setCategory(response.category);
+                }
 
             } catch (error) {
                 console.error("Failed to fetch category:", error);
+            } finally {
+                setLoader(false)
             }
         }
 
         fetchCategory();
-        console.log("data"); // runs immediately
     }, []);
 
 
     async function createCategory(e) {
-        // console.log("reading category",e.target.value);
-        setCategory(prev => [...prev, formData]);
-        console.log("--------------",categories);
+        console.log("--------------", categories);
         console.log("creating category------>", formData)
+        setLoaderMessage("Uploading category...")
+        setLoader(true)
 
-        // const response = await api.createCategory(categoryRef.current.value);
-        // console.log("category uploaded to database", response);
+        try {
+            if (formData == "") {
+                showPopup({
+                    message: "Categories cannot be empty",
+                    type: "missing fiels",
+                    duration: 3000
+                })
+
+            } else {
+                setCategory(prev => [...prev, formData]);
+                const response = await api.createCategory(formData);
+                console.log("category uploaded to database", response);
+                setFormData("")
+            }
+        } catch (error) {
+            console.log("error while uploading categories")
+            showPopup({
+                message: "error while uploading categories",
+                type: "error",
+                duration: 3000
+            })
+        }
+        finally {
+            setLoader(false)
+        }
+
+
+
 
     }
+
+    const handleSave = async (cat) => {
+        setLoaderMessage("Updating category...");
+        setLoader(true);
+        console.log("updating ----------->", categories)
+        try {
+            // const response = await api.updateCategory(cat.category_id, editValue);
+
+            setCategory(prev =>
+                prev.map((c) => (
+                    c.category_id === cat.category_id ? { ...c, category_name: editValue } : c
+                ))
+            );
+            setEditingId(null);
+            setEditValue("");
+            // if (response.success) {
+            // }
+        } catch (error) {
+            showPopup({
+                message: "Failed to update category",
+                type: "error",
+                duration: 3000
+            });
+        } finally {
+            setLoader(false);
+        }
+    };
 
 
     const handleInputChange = (e) => {
         setFormData(e.target.value);
     };
 
-    // const categories = ['o',"sdf","sfdg"]
+    const handleUpdate = (cat) => {
+        setEditingId(cat.category_id);
+        setEditValue(cat.category_name || cat);
+    };
 
+    const handleCancel = (cat) => {
+        setEditingId(null);
+
+    }
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            {loader && <Loader message="Uploading product..." />}
+            {loader && <Loader message={loaderMessage} />}
 
             <div className="w-[90vw] max-w-6xl h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col">
 
@@ -568,31 +638,66 @@ const CategoryManageCard = ({ onClose }) => {
                         </div>
 
                         <ul className="divide-y">
-                            {categories?.map((cat,index) => {
-                                console.log("reading categories", cat)
+                            {categories?.map((cat, index) => {
+                                // console.log("reading categories", cat)
                                 return (
                                     <li
                                         key={cat.category_id || index}
                                         className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
                                     >
-                                        <span className="text-gray-800 font-medium">
-                                            {cat.category_name}
-                                        </span>
+
+                                        <input
+                                            type="text"
+                                            value={
+                                                editingId === cat.category_id
+                                                    ? editValue
+                                                    : cat.category_name || cat
+                                            }
+                                            disabled={editingId !== cat.category_id}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            className="
+                                            w-full border rounded-lg px-4 py-3
+                                            disabled:bg-gray-100
+                                            disabled:text-gray-500
+                                            disabled:cursor-not-allowed
+                                            focus:ring-2 focus:ring-blue-500 "
+                                        />
 
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleUpdate(cat)}
-                                                className="px-3 py-1.5 text-sm rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                            >
-                                                Update
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(cat.id)}
-                                                className="px-3 py-1.5 text-sm rounded-md bg-red-100 text-red-700 hover:bg-red-200"
-                                            >
-                                                Delete
-                                            </button>
+                                            {editingId === cat.category_id ? (
+                                                <button
+                                                    onClick={() => handleSave(cat)}
+                                                    className="px-3 py-1.5 text-sm rounded-md bg-green-100 text-green-700 hover:bg-green-200"
+                                                >
+                                                    Save
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleUpdate(cat)}
+                                                    className="px-3 py-1.5 text-sm rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                                >
+                                                    Update
+                                                </button>
+                                            )}
+
+                                            {editingId === cat.category_id ? (
+                                                <button
+                                                    onClick={() => handleCancel(cat)}
+                                                    className="px-3 py-1.5 text-sm rounded-md bg-green-100 text-green-700 hover:bg-green-200"
+                                                >
+                                                    cancel
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleDelete(cat.category_id)}
+                                                    className="px-3 py-1.5 text-sm rounded-md bg-red-100 text-red-700 hover:bg-red-200"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
+
                                         </div>
+
                                     </li>)
                             })}
                         </ul>
