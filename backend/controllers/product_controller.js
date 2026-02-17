@@ -9,6 +9,7 @@ import {
 // import ApiResponse from "../utils/ApIResponse.js";
 import api from "../utils/ApIResponse.js";
 // import pool from "../config/database.js";
+import { Client } from "@elastic/elasticsearch"
 /**
  * 
  * @param {*} req - Express request object containing query parameters:
@@ -74,6 +75,51 @@ export async function uploadProduct(req, res) {
 
         result.rows[0].url = imgUrl
         console.log("result --->", result.rows[0]);
+
+        /**
+         * Inserting elastic search
+         */
+        // const { Client } = require('@elastic/elasticsearch');
+        const client = new Client({
+            node: 'https://c2c6bb6e91a54c4ca90b9dfd335fae13.ap-south-1.aws.elastic-cloud.com:443',
+            auth: {
+                apiKey: 'UmVmeVo1d0JWOVk1cC1yS09vY2I6am1HRmFQYzJQZHhfc1NiRzRlSi1sUQ=='
+            },
+        });
+        const index = 'ecommerce';
+        const mapping = {
+            "text": {
+                "type": "semantic_text"
+            }
+        };
+        const updateMappingResponse = await client.indices.putMapping({
+            index,
+            properties: mapping,
+        });
+        console.log("elastic search --->", updateMappingResponse);
+        const docs = [
+
+            {
+                id: result.rows[0].id,
+                name: name,
+                description: description
+
+            }
+        ];
+        const timeout = '5m';
+        const bulkIngestResponse = await client.helpers.bulk({
+            index,
+            datasource: docs,
+            timeout,
+            onDocument() {
+                return {
+                    index: {},
+                };
+            }
+        });
+
+        console.log("inserted into elastic search", bulkIngestResponse);
+
 
         res.status(201).json(
             api.response("✅ Product uploaded successfully", result.rows[0])
@@ -300,19 +346,37 @@ export const getNproduct = async (req, res) => {
         const { category, total, cursor } = req.params;
         console.log("Row to be fetched", total)
         console.log("Row to be Skipped", cursor)
+        console.log("categroy", category)
+        let query = null;
+        let values;
 
-        const query = `
+        if (!category || category === "null" || category === "undefined") {
+
+            query = `
         SELECT *
-        FROM products p
-        INNER JOIN categories c USING (category_id)
-        WHERE c.category_name = $1
-        AND p.id < $2
-        ORDER BY p.id DESC
-        LIMIT  $3
-        `
-        const value = [category, cursor, total];
+        FROM products
+        WHERE id < $1
+        ORDER BY id DESC
+        LIMIT $2
+      `;
+            values = [cursor, total];
+            console.log("(9999 ");
+        }
+        else {
 
-        const response = await pool.query(query, value);
+            query = `
+              SELECT *
+             FROM products p
+            INNER JOIN categories c USING (category_id)
+            WHERE c.category_name = $1
+             AND p.id < $2
+             ORDER BY p.id DESC
+             LIMIT  $3
+             `
+            values = [category, cursor, total];
+        }
+        console.log(query)
+        const response = await pool.query(query, values);
         console.log("response -->", response.rows)
 
         const productData = await Promise.all(response.rows.map(async (data) => {
@@ -359,12 +423,12 @@ export const deleteProductImage = async (req, res) => {
 
         const fileKey = fileDetails.fileName.replace(/^.*\//, "");
         console.log("key", fileKey);
-      
+
         const filename = {
             Bucket: "manprabesh-ecommerce",
             Key: fileDetails.fileName.trim().substring(1, fileDetails.fileName.length)
         }
-       
+
         const command = new DeleteObjectCommand(filename)
         const response = await aws_config().send(command)
         console.log("bucket deleted", response);
@@ -515,3 +579,135 @@ export const updateProduct = async (req, res) => {
         return res.status(500).json(api.reject("server error while updating products", error))
     }
 }
+
+export const getProducts = async (req, res) => {
+    try {
+        console.log("lskdnfods")
+
+        const query = " SELECT * from products p join categories c on p.category_id = c.category_id ORDER BY p.id DESC LIMIT  $1";
+        const result = await pool.query(query, [5]);
+
+        console.log("result", result.rows)
+        const productData = await Promise.all(result.rows.map(async (data) => {
+            console.log("--------------------", data)
+            let url = [];
+            if (data.product) {
+
+                url = await Promise.all(data.product?.map(async (filename) => {
+
+                    const get_command = new GetObjectCommand({
+                        Bucket: "manprabesh-ecommerce",
+                        Key: `products/${filename}`,
+                    });
+
+                    const presignedUrl = await getSignedUrl(aws_config(), get_command);
+                    // console.log('presigned --->', presignedUrl)
+                    return presignedUrl;
+                }))
+                // console.log("url ---->", url)
+            }
+            //getting product image url
+
+            console.log("-----------")
+            return {
+                product_id: data.id,
+                name: data.name,
+                price: data.price,
+                description: data.description,
+                url: url,
+                quantity: data.quantity,
+                category: data.category_name,
+                category_id: data.category_id
+            };
+        }));
+        console.log("00000000000000000")
+
+        const data = {
+            productData,
+            // total_product
+        }
+
+        console.log("Data to be send ---------->", data)
+
+        return res.status(200).json(
+            api.response("fetch product succesfully", data)
+        )
+
+    } catch (error) {
+        console.log("error", error)
+    }
+}
+// import { Client } from '@elastic/elasticsearch';
+export const searchProduct = async (req, res) => {
+    try {
+        const k = req.query.k;
+        console.log("Product", k);
+        const client = new Client({
+            node: 'https://c2c6bb6e91a54c4ca90b9dfd335fae13.ap-south-1.aws.elastic-cloud.com:443',
+            auth: {
+                apiKey: 'UmVmeVo1d0JWOVk1cC1yS09vY2I6am1HRmFQYzJQZHhfc1NiRzRlSi1sUQ=='
+            },
+        });
+
+
+        const response = await client.search({
+            index: "ecommerce",
+            q: k,
+        });
+
+
+        let arrOfProduct = [];
+        console.log("result from elastic search", response.hits.hits);
+
+        let query = 'SELECT * FROM products p INNER JOIN categories c USING(category_id) WHERE p.id = $1;'
+        
+        const productData = await Promise.all(
+            response.hits.hits.map(async (element) => {
+
+                const productId = element._source.id;
+
+                const dbResponse = await pool.query(query, [productId]);
+
+                const formattedProducts = await Promise.all(
+                    dbResponse.rows.map(async (data) => {
+
+                        const urls = await Promise.all(
+                            data.product.map(async (filename) => {
+
+                                const get_command = new GetObjectCommand({
+                                    Bucket: "manprabesh-ecommerce",
+                                    Key: `products/${filename}`,
+                                });
+
+                                return await getSignedUrl(aws_config(), get_command);
+                            })
+                        );
+
+                        return {
+                            product_id: data.id,
+                            name: data.name,
+                            price: data.price,
+                            description: data.description,
+                            url: urls,
+                            quantity: data.quantity,
+                            category: data.category_name,
+                            category_id: data.category_id
+                        };
+                    })
+                );
+
+                return formattedProducts[0]; // assuming one row per product
+            })
+        );
+
+        console.log("product data", productData)
+        console.log("arrof product", arrOfProduct)
+        return res.status(200).json({ data: productData })
+
+    } catch (error) {
+        console.log("Error in search product controller", error)
+        return res.status(404).json({ message: "server is bussy" });
+    }
+}
+
+
