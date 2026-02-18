@@ -8,28 +8,31 @@ import { SearchBar, FilterSection } from "../../components/SearchBar"
 
 function useSentinel(onHit) {
   const ref = useRef(null);
-  console.log("reference",ref)
+  // console.log("reference",ref)
   // console.log("On hitt", onHit)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        console.log("entry",entry)
+        // console.log("entry",entry)
         if (entry.isIntersecting) {
-          console.log("entry--->", entry)
+          // console.log("entry--->", entry)
           onHit();
         }
+        // console.log("on leave",entry.boundingClientRect.top)
       },
       {
         root: null,
-        // rootMargin:"200px",
-        threshold: 1.0,
+        rootMargin:"0px 0px 70px 0px",
+        // threshold: 1.0,
       }
     );
-    console.log("Observer", observer);
+
+    // console.log("Observer", observer);
 
 
     if (ref.current) {observer.observe(ref.current)};
+    // console.log("ref current",ref.current)
 
     return () => observer.disconnect();
   }, [onHit]);
@@ -49,6 +52,8 @@ const UserHome = () => {
     minRating: 0,
     inStock: null
   });
+  const [key,setKey]=useState('')
+  // const [searchProducts,setSearchProducts] = useState([]);
   const elm = useRef(null)
 
 
@@ -82,20 +87,17 @@ const UserHome = () => {
   useEffect(() => {
 
 
-    console.log("running- agian");
-    if (elm.current) {
-
-      console.log("current elm", elm.current);
-    }
-
     (async () => {
       try {
-        const response = await api.getProducts();
+        let response = await api.getProducts();
+        let categoryResponse = await api.getAllCategory()
         // console.log("fetching all product", response.data.productData);
         setProducts(response.data.productData || []);
+        // console.log("get all category",categoryResponse)
+        setCategories(categoryResponse.category)
         // setFilters(response.data || [])
       } catch (err) {
-        console.error("Error fetching products:", err);
+        // console.error("Error fetching products:", err);
         setError("Failed to load products");
       } finally {
         setLoading(false);
@@ -105,12 +107,13 @@ const UserHome = () => {
 
 
   const handleSearch = (query) => {
-    console.log("serchingw query", query);
-    setSearchQuery(query);
+    // console.log("serchingw query", query);
+    // setSearchQuery(query);
+    setKey(query);
   };
 
   const handleFilterChange = (newFilters) => {
-    console.log("changing filter", newFilters)
+    // console.log("changing filter", newFilters)
     setFilters(newFilters);
   };
 
@@ -128,6 +131,7 @@ const UserHome = () => {
     const matchesSearch = !searchQuery ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      console.log("match search",matchesSearch)
 
     const matchesCategory = filters.categories.length === 0 ||
       filters.categories.includes(product.category);
@@ -145,11 +149,8 @@ const UserHome = () => {
 
     return matchesSearch && matchesCategory && matchesPrice && matchesRating && matchesStock;
   });
-  console.log("filter products", filteredProducts)
+  // console.log("filter products", filteredProducts)
 
-  // if (loading) {
-  //   return <Loader />;
-  // }
 
   if (error) {
     return (
@@ -161,6 +162,12 @@ const UserHome = () => {
     );
   }
 
+  async function searchProduct(){
+    const response =await api.searchProduct(key);
+    // console.log("the incoming data is",response)
+    // setSearchProducts(response.data)
+    setProducts(response.data)
+  }
   return (
     <UserLayout>
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 mt-10 sm:mt-12 lg:mt-10">
@@ -176,8 +183,10 @@ const UserHome = () => {
           </div>
 
           {/* Search Bar */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-6 sm:mb-8 flex">
+
             <SearchBar onSearch={handleSearch} placeholder="Search for products..." />
+            <button className='bg-blue-500 w-30 rounded-xl' onClick={()=>searchProduct()}>Search</button>
           </div>
 
           {/* Main Content with Sidebar */}
