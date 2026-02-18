@@ -3,12 +3,14 @@ import { Upload } from 'lucide-react';
 import { useState, useCallback } from "react";
 import api from "../../services/api";
 import Popup from "../../components/PopUp";
-import { usePopup } from "../../components/popUpContext"
+import { usePopup } from "../../context/popUpContext"
 import Loader from "../../components/Loader";
 import { Link } from "react-router";
 import { X, Image } from 'lucide-react';
+import AdminLayout from "../../components/AdminLayout";
 
-const ProductUploadCard = ({ onClose }) => {
+
+const ProductUploadCard = ({ onClose, products = null }) => {
     const [category, setCategory] = useState([]);
     const { showPopup } = usePopup();
     const [loader, setLoader] = useState(false);
@@ -25,6 +27,15 @@ const ProductUploadCard = ({ onClose }) => {
         quantity: '',
         product: '',
     });
+    const [updateData, setUpdateData] = useState({
+        name: '',
+        price: '',
+        category: '',
+        description: '',
+        quantity: '',
+        product: '',
+    });
+    console.log("product id", products);
 
     useEffect(() => {
         (async () => {
@@ -36,6 +47,23 @@ const ProductUploadCard = ({ onClose }) => {
             }
         })();
     }, []);
+
+    useEffect(() => {
+        setFormData({
+            name: products?.name || '',
+            price: products?.price || '',
+            category: products?.category || '',
+            description: products?.description || '',
+            quantity: products?.quantity || '',
+            product: '' // keep empty (files handled separately)
+        });
+        if (products?.url?.length) {
+            setSelectedFile(products.url); // preview    
+            setImgUrl([]);                   // no new uploads yet
+            setImgToUpload([]);              // metadata reset
+        }
+
+    }, [products])
 
     const handleEscKey = useCallback((event) => {
 
@@ -59,8 +87,14 @@ const ProductUploadCard = ({ onClose }) => {
 
         const blob = URL.createObjectURL(e.target.files[0]);
         if (e.target.files && e.target.files[0]) {
+
+            //to display in the fronted
             setSelectedFile((prev) => [...prev, blob]);
+            //to send to backend 
             setImgToUpload((prev) => [...prev, { name: e.target.files[0].name, type: e.target.files[0].type }]);
+            console.log("image to upload ---", imgToUpload)
+
+            //to send to aws
             setImgUrl((prev) => [...prev, e.target.files[0]])
         }
 
@@ -72,20 +106,77 @@ const ProductUploadCard = ({ onClose }) => {
             ...prev,
             [name]: value
         }));
+
+        if (products) {
+            console.log("image to upload", imgToUpload)
+
+            console.log("updating products ------->", name, "the value ->", value);
+            setUpdateData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+
+        }
     };
+
+    const removeFile = async (file, index = null) => {
+        console.log("indexxxxx", index)
+
+        setSelectedFile((prev) => prev.filter(img => (img != file)))
+        console.log("removing file", file)
+        if (!products) {
+            console.log("img to upload -- ", imgToUpload)
+            setImgToUpload((prev) => prev.filter((el, ind) => {
+                console.log("element", el);
+                console.log("index", ind)
+                return ind != index
+            }));
+            setImgUrl((prev) => prev.filter((el, ind) => {
+                console.log("element", el);
+                console.log("index", ind)
+                return ind != index
+            }));
+
+            console.log("all image", imgToUpload)
+        } else {
+            const url = new URL(file);
+            const fileName = url.pathname.trim();
+            console.log("url path name", url.pathname.trim())
+            console.log("image url", imgUrl)
+            console.log("image url to upload", imgToUpload)
+
+            const fileDetails = {
+                fileName: fileName,
+                productID: products.product_id
+            }
+            showPopup({
+                message: "Are you sure want to delete the file",
+                work: () => deleteImage(fileDetails)
+            })
+
+            async function deleteImage(fileDetails) {
+                const response = await api.deleteFile(fileDetails)
+                console.log("response from delete file", response);
+            }
+        }
+
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log("form data --->", formData);
 
         const productData = {
             name: formData.name,
             price: formData.price,
             description: formData.description,
             category: formData.category,
-            product: imgToUpload,
+            product: imgToUpload.length > 0 ? imgToUpload : products?.url,
             quantity: formData.quantity
         };
+        console.log("image to upload", imgToUpload)
 
+        // checks for empty filed
         const requiredFields = [
             productData.category,
             productData.name,
@@ -100,26 +191,52 @@ const ProductUploadCard = ({ onClose }) => {
         );
 
         console.log('Form submitted:', productData.name.length);
+        console.log("product data-->", productData.product)
+        console.log("product url-->", products?.url)
 
         if (hasEmptyField) {
             showPopup({
                 message: "All fields are required",
                 type: "Missing field",
                 duration: 4000,
+                work: () => {
+                    window.location.reload();
+                }
             });
         }
         else {
 
             try {
                 setLoader(true);
-                const response = await api.uploadProduct(productData);
-                const formData = new FormData();
-                await Promise.all(
-                    imgUrl.map(async (file, i) => {
-                        formData.append(`file${i}`, file);
-                        await api.upload_to_aws(response.data.url[i], file);
-                    })
-                );
+                console.log("product data-->", productData)
+                let response;
+
+                if (products) {
+                    console.log("updating products ---->", updateData)
+                    console.log("updating products ----> kjnmokn")
+                    console.log("image to upload", imgToUpload)
+                    response = await api.updateProduct(updateData, imgToUpload, products.product_id, products.category_id)
+                }
+                else {
+                    console.log("uploading products ---->", productData)
+                    response = await api.uploadProduct(productData);
+                }
+                console.log("response", response)
+                /**
+                 * update the data 
+                 * upload the image to s3
+                 */
+                if (response.success) {
+
+                    const formData = new FormData();
+                    await Promise.all(
+                        imgUrl.map(async (file, i) => {
+                            console.log("image url", imgUrl)
+                            formData.append(`file${i}`, file);
+                            await api.upload_to_aws(response.data.url[i], file);
+                        })
+                    );
+                }
             } catch (error) {
                 console.log("error while uploading product", error.message)
             } finally {
@@ -128,6 +245,7 @@ const ProductUploadCard = ({ onClose }) => {
                     message: "Product uploaded successfully",
                     type: "Product upload"
                 })
+
             }
         }
 
@@ -305,8 +423,14 @@ const ProductUploadCard = ({ onClose }) => {
                     <div className="flex w-[90] overflow-x-auto whitespace-nowrap">
                         {
                             selectedFile?.map((data, index) => {
-                                console.log("imgages", data)
-                                return (<img key={index} src={data} alt="" className="h-10 w-20 mr-4 flex-shrink-0 cursor-pointer" onClick={() => handleImg(data)} />)
+                                // console.log("imgages", data)
+                                return (
+                                    <div key={index}>
+                                        <X size={20} onClick={() => removeFile(data, index)} />
+
+                                        <img src={data} alt="" className="h-10 w-20 mr-4 flex-shrink-0 cursor-pointer" onClick={() => handleImg(data)} />
+                                    </div>
+                                )
                             })
                         }
                     </div>
@@ -346,13 +470,23 @@ const Hero = () => {
     const [loader, setLoader] = useState(true);
     const [products, setProducts] = useState([]);
     const [component, setComponent] = useState(null)
+    const [category, setCategory] = useState([])
 
     useEffect(() => {
+
+
+        
         (async () => {
             try {
-                const response = await api.getAllProduct();
+                let response = await api.getAllProduct();
                 console.log("response ", response.data.productData);
                 setProducts(response.data.productData || []);
+
+                response = await api.getCategory();
+                // console.log("fetching data ------->", response.category);
+                if (response.success) {
+                    setCategory(response.category);
+                }
             } catch (err) {
                 console.error("Error fetching products:", err);
                 setError("Failed to load products");
@@ -361,6 +495,20 @@ const Hero = () => {
             }
         })();
     }, [])
+    
+    useEffect(() => {
+        const es = new EventSource("http://localhost:5000/api/v1/categories/stream");
+        console.log("event source",es)
+        es.addEventListener("category_created", (e) => {
+            const category = JSON.parse(e.data);
+            console.log("New category:", category);
+            setCategory(category)
+        });
+
+        return () => es.close();
+    }, []);
+
+
 
     const handleComponent = (component) => {
         setShowCard(!showCard)
@@ -368,6 +516,7 @@ const Hero = () => {
     }
     return (
         <>
+        <AdminLayout>
             <div>
                 {/* Card section */}
                 <div className="grid grid-cols-3 ml-50 mr-40 mt-20">
@@ -397,7 +546,7 @@ const Hero = () => {
 
                             <span className="text-xl text-white">Total no. of category</span>
                             <h5 className="mt-3 mb-4 text-4xl font-semibold tracking-tight text-heading text-white">
-                                12
+                                {category.length}
                             </h5>
 
                             <a href="#" className="inline-flex items-center text-white bg-brand hover:bg-brand-strong shadow-xs font-medium rounded-base text-xs px-3 py-1.5">
@@ -455,6 +604,7 @@ const Hero = () => {
 
                 {loader && <Loader />}
             </div>
+            </AdminLayout>
         </>
     )
 }
@@ -495,14 +645,8 @@ const CategoryManageCard = ({ onClose }) => {
     const [categories, setCategory] = useState([]);
     const { showPopup } = usePopup();
     const [loader, setLoader] = useState(false);
-    const [showImg, setShowImg] = useState('')
-    const [imgCard, setImgCard] = useState(false)
-    const [imgToUpload, setImgToUpload] = useState([])
-    const [imgUrl, setImgUrl] = useState([]);
-    const [selectedFile, setSelectedFile] = useState([]);
     const [formData, setFormData] = useState('');
     const [loaderMessage, setLoaderMessage] = useState();
-    // const [showInput, setShowInput] = useState(false)
     const [editingId, setEditingId] = useState(null);
     const [editValue, setEditValue] = useState("");
 
@@ -546,10 +690,10 @@ const CategoryManageCard = ({ onClose }) => {
                 })
 
             } else {
-                setCategory(prev => [...prev, formData]);
                 const response = await api.createCategory(formData);
                 console.log("category uploaded to database", response);
                 setFormData("")
+                setCategory(prev => [...prev, formData]);
             }
         } catch (error) {
             console.log("error while uploading categories")
@@ -562,28 +706,26 @@ const CategoryManageCard = ({ onClose }) => {
         finally {
             setLoader(false)
         }
-
-
-
-
     }
 
     const handleSave = async (cat) => {
         setLoaderMessage("Updating category...");
         setLoader(true);
-        console.log("updating ----------->", categories)
-        try {
-            // const response = await api.updateCategory(cat.category_id, editValue);
 
+        try {
+            const response = await api.updateCategory(cat.category_id, editValue);
             setCategory(prev =>
                 prev.map((c) => (
                     c.category_id === cat.category_id ? { ...c, category_name: editValue } : c
                 ))
             );
-            setEditingId(null);
-            setEditValue("");
-            // if (response.success) {
-            // }
+            if (response.success) {
+
+                setEditingId(null);
+                setEditValue("");
+            }
+
+
         } catch (error) {
             showPopup({
                 message: "Failed to update category",
@@ -603,6 +745,8 @@ const CategoryManageCard = ({ onClose }) => {
     const handleUpdate = (cat) => {
         setEditingId(cat.category_id);
         setEditValue(cat.category_name || cat);
+        console.log("new category name", cat.category_name)
+        console.log("new category ID", cat.category_id)
     };
 
     const handleCancel = (cat) => {
@@ -737,4 +881,4 @@ const CategoryManageCard = ({ onClose }) => {
 
 
 
-export default Hero;
+export { Hero, ProductUploadCard };

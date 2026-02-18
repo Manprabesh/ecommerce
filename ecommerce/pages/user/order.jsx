@@ -2,27 +2,33 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Package, Clock, CheckCircle, XCircle } from "lucide-react";
 import api from "../../services/api";
 import UserLayout from "../../components/UserLayout";
+import { UseAuth } from "../../components/AuthContext";
+import { Loader } from "lucide-react";
 function Order() {
   const [orders, setOrders] = useState([]);
   const [currentIdx, setCurrentIdx] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const {userID} = UseAuth();
 
   useEffect(() => {
     (async () => {
+      console.log("yooooooooo");
       try {
         setLoading(true);
         const userId = localStorage.getItem('userId');
         
-        if (!userId) {
+        if (!userID) {
+          console.log("errorrrr")
           setError("User not authenticated");
           setLoading(false);
           return;
         }
 
-        const response = await api.getAllOrders(userId);
-        
+        const response = await api.getAllOrders(userID);
+        console.log("reading order",response)
         if (response.success) {
+          // console.log("resdfdf")
           setOrders(response.data);
           setCurrentIdx(Array(response.data.length).fill(0));
         } else {
@@ -110,7 +116,7 @@ function Order() {
 
   return (
     <UserLayout>
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 mt-10">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Orders</h1>
@@ -204,7 +210,13 @@ function Order() {
                       <div>
                         <p className="text-sm text-gray-500">Total Amount</p>
                         <p className="text-2xl font-bold text-gray-900">
-                          Rs{order.price ? order.price.toFixed(2) : '0.00'}
+                          Rs{order.price ? (order.price*order.quantity).toFixed(2) : '0.00'}
+                        </p>
+                      </div> 
+                      <div>
+                        <p className="text-sm text-gray-500">Total quantity</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {order.quantity}
                         </p>
                       </div>
                       <div className="flex gap-3">

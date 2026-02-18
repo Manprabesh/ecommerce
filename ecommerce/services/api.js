@@ -1,5 +1,5 @@
-const base_url = "http://192.168.162.191:5000/api/v1";
-// const base_url = "http://localhost:5000/api/v1";
+// const base_url = "http://192.168.162.191:5000/api/v1";
+const base_url = "http://localhost:5000/api/v1";
 
 class Api {
     async makeRequest(endpoint, options) {
@@ -10,7 +10,6 @@ class Api {
 
     async handleResponse(response) {
         const data = await response.json();
-        console.log("response --->", data)
         return data;
     }
 
@@ -26,6 +25,7 @@ class Api {
                 }
             }
         )
+        // console.log("response")
         return await response
     }
 
@@ -59,6 +59,7 @@ class Api {
     async upload_to_aws(data, file) {
         console.log("incoming data--->", data)
         console.log("incoming file--->", file)
+        console.log("file type--->", file.type)
 
         const response = await fetch(data, {
             method: "PUT",
@@ -105,13 +106,37 @@ class Api {
         return response;
     }
 
-    async getAllProduct() {
+    async getAllProduct(no) {
+        console.log("all products", no)
         const response = await this.makeRequest('/get/products', {
             method: "GET",
             headers: {
                 'Accept': 'application/json'
             }
         })
+        return response;
+    }
+
+    async getProducts() {
+        //  console.log("all products", no)
+        const response = await this.makeRequest('/get-product', {
+            method: "GET",
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        return response;
+    }
+    async getNproducts(category = null, total, cursor) {
+        console.log("all products", cursor)
+
+        const response = await this.makeRequest(`/get/products/${category}/${total}/${cursor.product_id}`, {
+            method: "GET",
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        console.log("response ------>", response)
         return response;
     }
 
@@ -236,7 +261,7 @@ class Api {
         return response;
     }
 
-    async verifyPaymnet(response) {
+    async verifyPaymnet(response, order_id) {
         const result = await this.makeRequest('/verify-payment', {
             method: "POST",
             credentials: "include",
@@ -245,12 +270,14 @@ class Api {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_signature: response.razorpay_signature,
+                order_id: order_id
             }),
         })
         return result
     }
 
     async getAllOrders(userId) {
+        console.log("orders")
         const response = await this.makeRequest(`/get/orders/${userId}`, {
             method: "GET",
             credentials: "include",
@@ -259,6 +286,78 @@ class Api {
             }
         });
         return response;
+    }
+
+    async deleteProduct(productId) {
+        const response = await this.makeRequest("/delete-product", {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify({ productId }),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        })
+        return response;
+    }
+
+    async updateProduct(productData, files, product_id, category_id) {
+        console.log('in the update product ', productData);
+        console.log('Product ID ', product_id);
+        // console.log("deleting filee")
+        const response = await this.makeRequest("/update-product", {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify({ productData, files, product_id, category_id }),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        })
+        return response;
+    }
+
+    async deleteFile(file) {
+        console.log("deleting filee")
+        const response = await this.makeRequest("/delete-image", {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify({ fileDetails: file }),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        })
+        return response;
+    }
+
+    async updateCategory(id, name) {
+        const response = await this.makeRequest("/update-category", {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify({ category_id: id, category_name: name }),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        })
+        return response;
+    }
+
+    async searchProduct(product) {
+        console.log("api ",product)
+        const response = await this.makeRequest(`/product?k=${product}`, {
+            method: "GET",
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        return response
+    }
+
+    async searchByfilter(){
+        
     }
 }
 const api = new Api()

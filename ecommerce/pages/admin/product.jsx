@@ -22,8 +22,11 @@ export default function Product() {
     if (!files.length) return;
 
     const previewUrls = files.map(file => URL.createObjectURL(file));
+
     setImgData(prev => [...prev, ...previewUrls]);
+
     setImgToUpload(prev => [...prev, ...files.map(file => ({ name: file.name, type: file.type }))]);
+    
     setImgUrl(prev => [...prev, ...files]);
   };
 
@@ -50,14 +53,14 @@ export default function Product() {
       };
 
       const response = await api.uploadProduct(productData);
-      console.log("response --->",response)
+      console.log("response --->", response)
       const formData = new FormData();
 
       await Promise.all(
         imgUrl.map(async (file, i) => {
-          console.log("--------------------",file)
+          console.log("--------------------", file)
           formData.append(`file${i}`, file);
-          console.log("data",formData.get(`file${i}`))
+          console.log("data", formData.get(`file${i}`))
           await api.upload_to_aws(response.data.url[i], file);
         })
       );
@@ -92,7 +95,7 @@ export default function Product() {
 
   return (
     <AdminLayout>
-      <div className="bg-black h-full flex flex-col items-center">
+      <div className="bg-black h-full flex flex-col items-center mt-10">
         {loader && <Loader message="Uploading product..." />}
 
         {/* Image Upload Section */}

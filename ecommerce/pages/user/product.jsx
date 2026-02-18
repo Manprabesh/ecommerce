@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router";
 import api from "../../services/api";
 import Popup from "../../src/utils/popup";
 import Loader from "../../components/Loader";

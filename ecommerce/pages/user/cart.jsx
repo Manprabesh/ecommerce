@@ -3,24 +3,28 @@ import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import api from '../../services/api';
 import UserLayout from '../../components/UserLayout';
 import { useNavigate } from 'react-router';
+import { useContext } from 'react';
+import { CartContext } from '../../components/CartContext';
+import { UseAuth } from '../../components/AuthContext';
 
 const Cart = () => {
   const user_id = localStorage.getItem('userId');
-  const [price, setPrice] = useState(null)
+  const [price, setPrice] = useState(null);
   console.log("user id --->", user_id);
 
   const [cartItems, setCartItems] = useState([]);
   const [currentIndex, setCurrentIndex] = useState([]);
+  const cart = useContext(CartContext);
+  const { userID } = UseAuth();
   const navigate = useNavigate()
   useEffect(() => {
     (async () => {
       try {
-        const response = await api.getCart(user_id);
+        console.log("user data --->", userID)
+        const response = await api.getCart(userID);
         console.log("response", response);
         if (response.success) {
           setCartItems(response.data);
-          // localStorage.setItem('cart',{quantity:response.data.length, })
-          // Initialize index array for each product
           setCurrentIndex(new Array(response.data.length).fill(0));
         }
       } catch (error) {
@@ -31,10 +35,7 @@ const Cart = () => {
   }, []);
 
   const updateQuantity = (cartId, delta) => {
-    console.log("updating quantity", cartId)
-    console.log("updating quantity delta", delta)
-    const userId = localStorage.getItem('userId');
-    console.log("user id-->", userId)
+
     setCartItems(items =>
       items.map(item =>
         item.cart_id === cartId
@@ -43,8 +44,8 @@ const Cart = () => {
       )
     );
 
-
     (async () => {
+
       let product_id = null;
       const data = cartItems.map((item) => {
         if (item.cart_id === cartId) {
@@ -52,8 +53,9 @@ const Cart = () => {
         }
       })
 
+      console.log("useriddd", userID)
       const cart_data = {
-        user_id: localStorage.getItem('userId'),
+        user_id: userID,
         product_id
       };
 
@@ -62,6 +64,7 @@ const Cart = () => {
         const response = await api.addToCart(cart_data);
         console.log("response", response)
       }
+
       else {
         console.log("reduce carttt");
         const response = await api.reduceFromCart(cart_data);
@@ -126,13 +129,24 @@ const Cart = () => {
 
   function checkOut() {
     let products = [];
+    let product = [];
+
     for (let i = 0; i < cartItems.length; i++) {
       console.log("cart Item", cartItems[i]);
-      products.push(cartItems[i].product_id);
+      let obj = {};
+      obj.product_id = cartItems[i].product_id;
+      obj.product_quantity = cartItems[i].quantity;
+      obj.product_price = cartItems[i].price;
+      products.push(obj);
     }
-    localStorage.setItem('products', JSON.stringify(products))
-    localStorage.setItem('total_price', JSON.stringify(calculateTotal()))
-    console.log("_____products", JSON.parse(localStorage.getItem("products")))
+
+    // console.log("object ---->",pr  oduct)
+    console.log('cart itmes', cartItems);
+    console.log("Setting cart price: ", calculateTotal())
+    cart.setPrice(calculateTotal())
+    console.log("setting products: ", products)
+    cart.setProducts(products);
+
     navigate("/user/address")
   }
 

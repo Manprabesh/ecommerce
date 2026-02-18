@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 
 function UserNavbar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -9,7 +9,7 @@ function UserNavbar() {
   };
 
   return (
-    <div className="fixed left-0 right-0 bg-gray-900 text-white py-3 flex justify-around items-center shadow-lg">
+    <div className="fixed left-0 right-0 bg-gray-900 text-white py-3 flex justify-around items-center shadow-lg z-10">
       <NavLink
         to="/user/home"
         onClick={handleLinkClick}

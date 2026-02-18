@@ -1,16 +1,18 @@
 import { useNavigate } from "react-router";
 import { useState, useEffect, useContext } from "react";
 import { ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
-import { usePopup } from "./popUpContext";
+import { usePopup } from "../context/popUpContext";
+import { UseAuth } from "./AuthContext";
 import api from "../services/api";
 export const ProductCard = ({ product }) => {
-    console.log("getting products", product)
+    // console.log("getting products", product)
     const navigate = useNavigate();
     const { showPopup } = usePopup();
+    const {userID} = UseAuth()
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     //   const authData = useContext(AuthContext)
 
-
+// console.log("auth data",)
     const nextImage = () => {
         setCurrentImageIndex((prev) => (
             // console.log("setting current Index",prev)
@@ -26,10 +28,10 @@ export const ProductCard = ({ product }) => {
 
     async function addCart(data) {
         const cart_data = {
-            user_id: localStorage.getItem('userId'),
+            user_id: userID,
             product_id: data.product_id
         }
-        console.log("add to cart", data);
+        console.log("add to cart",cart_data );
         const response = await api.addToCart(cart_data);
         console.log("response from cart data", cart_data)
         setTimeout(() => {

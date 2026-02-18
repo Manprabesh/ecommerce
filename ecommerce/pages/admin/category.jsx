@@ -13,11 +13,7 @@ function Category() {
         setCategory(prev => [...prev, categoryRef.current.value]);
         console.log(categoryRef.current.value);
         console.log("creating category------>", category)
-        // localStorage.setItem('category', JSON.stringify(category));
-        /**
-         * upload it to database
-         */
-
+      
         const response = await api.createCategory(categoryRef.current.value);
         console.log("category uploaded to database", response);
 
@@ -50,7 +46,7 @@ function Category() {
 
     return (
         <AdminLayout>
-        <div className="bg-zinc-900 h-screen">
+        <div className="bg-zinc-900 h-screen mt-10">
             <div className="flex flex-col justify-center ml-30">
 
                 <input type="text" name="category" className="bg-white w-56 mt-10 h-8 " ref={categoryRef} />

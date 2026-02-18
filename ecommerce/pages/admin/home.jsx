@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Trash } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash, Wrench } from 'lucide-react';
 import api from '../../services/api';
 import AdminLayout from '../../components/AdminLayout';
 import Loader from '../../components/Loader';
-import { usePopup } from '../../components/popUpContext';
-const ProductCard = ({ product }) => {
+import { usePopup } from '../../context/popUpContext';
+import { ProductUploadCard } from './heor';
+const ProductCard = ({ product, setProduct, allProduct }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showCard, setShowCard] = useState(false)
+  const { showPopup } = usePopup()
 
   const nextImage = () => {
     setCurrentImageIndex((prev) =>
@@ -21,25 +24,39 @@ const ProductCard = ({ product }) => {
 
   async function deleteProduct() {
     try {
-      const response = await api.deleteProduct(product.product_id);
-      console.log("Delete response:", response);
+
+
+      const productDelete = () => {
+        console.log("yoooo product deleted");
+        setProduct((prev) => {
+          return allProduct.filter((p) => (p.product_id != product.product_id))
+        })
+      }
+      showPopup({
+        message: "Are you sure you want to delete the product",
+        type: "error",
+        work: productDelete,
+      })
+
+
+      // const response = await api.deleteProduct(product.product_id);
+
     } catch (error) {
       console.error("Error deleting product:", error);
     }
 
-    console.log("product", product);
   }
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
       <div className="relative group">
         <img
-          src={product.url[currentImageIndex]}
+          src={product.url?.[currentImageIndex]}
           alt={product.name}
           className="w-full h-64 object-cover"
         />
 
-        {product.url.length > 1 && (
+        {product.url?.length > 1 && (
           <>
             <button
               onClick={prevImage}
@@ -55,13 +72,17 @@ const ProductCard = ({ product }) => {
             </button>
 
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-              {product.url.map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 rounded-full ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'
-                    }`}
-                />
-              ))}
+              {product.url.map((_, index) => {
+
+                return (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 rounded-full ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                      }`}
+                  />
+                )
+
+              })}
             </div>
           </>
         )}
@@ -79,12 +100,23 @@ const ProductCard = ({ product }) => {
           <span className="text-2xl font-bold text-gray-900">
             ₹{product.price}
           </span>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors" onClick={() => deleteProduct()}>
-            <Trash size={18} />
-            Delete
-          </button>
+          <div >
+
+            <button className="bg-red-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors mb-3" onClick={() => deleteProduct()}>
+              <Trash size={18} />
+              Delete
+            </button>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors" onClick={() => setShowCard(!showCard)}>
+              {/* <Trash size={18} /> */}
+              <Wrench size={18} />
+              Update
+            </button>
+          </div>
+
         </div>
       </div>
+      {showCard && <ProductUploadCard onClose={() => setShowCard(!showCard)} products={product} />}
+
     </div>
   );
 };
@@ -169,8 +201,7 @@ const Home = () => {
   const INITIAL_LIMIT = 6;
   const LOAD_MORE_STEP = 6;
   const loadMore = async (categoryId, category_name) => {
-    // const total = (visibleCount[categoryId] || INITIAL_LIMIT) + INITIAL_LIMIT;
-    // console.log("visible count", (visibleCount[categoryId] || INITIAL_LIMIT) + INITIAL_LIMIT)
+
     setVisibleCount((prev) => ({
       ...prev,
       [categoryId]: (prev[categoryId] || INITIAL_LIMIT) + LOAD_MORE_STEP,
@@ -182,20 +213,21 @@ const Home = () => {
     try {
       setLoader(true);
       setLoaderMessage("Fetching product")
+      console.log("the cursor id is",cursor.product_id)
       const response = await api.getNproducts(category_name, LOAD_MORE_STEP, cursor);
       // console.log("respone while fetching n products", response);
-       setProducts((prev) => [
-      ...prev,
-      ...response.data.filter((newProduct) => {
-        // console.log("Checking:", newProduct.product_id);
-        return !prev.some(
-          (p) => {
-            // console.log("in some", p.product_id == newProduct.product_id)
-            p.product_id == newProduct.product_id ? null : null
-          }
-        );
-      }),
-    ]);
+      setProducts((prev) => [
+        ...prev,
+        ...response.data.filter((newProduct) => {
+          // console.log("Checking:", newProduct.product_id);
+          return !prev.some(
+            (p) => {
+              console.log("in some", p.product_id == newProduct.product_id)
+              p.product_id == newProduct.product_id
+            }
+          );
+        }),
+      ]);
     } catch (error) {
       showPopup({
         message: "error while fetching product",
@@ -216,62 +248,70 @@ const Home = () => {
     return acc;
   }, {});
 
-  // console.log("product category", productsByCategory)
+  console.log("product category", productsByCategory)
   return (
-    <AdminLayout>
-      <div className="min-h-screen bg-gray-50 p-8 mt-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Our Products</h1>
-            <p className="text-gray-600">Browse our collection of quality items</p>
+    <div className='flex absolute'>
+
+      <AdminLayout>
+        <div className="min-h-screen bg-gray-50 p-8 mt-10 z-20">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Our Products</h1>
+              <p className="text-gray-600">Browse our collection of quality items</p>
+            </div>
+            {console.log("reading all products", products)}
+            {loader && <Loader message={loaderMessage} />}
+
+            {categories.map((cat) => {
+              // console.log("categories", cat)
+              const categoryProducts = productsByCategory[cat.category_id] || [];
+              const visible =
+                visibleCount[cat.category_id] || INITIAL_LIMIT;
+              // console.log("visible  -->", visible)
+              return (
+                <CategoryCard
+                  key={cat.category_id}
+                  title={cat.category_name}
+                >
+                  {categoryProducts.length === 0 ? (
+                    <p className="text-gray-500">No products available</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {categoryProducts
+                          .slice(0, visible)
+                          .map((product, i) => {
+                            return (
+
+                              <ProductCard
+                                key={product.product_id}
+                                product={product}
+                                setProduct={setProducts}
+                                allProduct={products}
+                              />
+                            )
+                          })}
+                      </div>
+
+
+                      <div className="mt-6 flex justify-center">
+                        <button
+                          onClick={() => loadMore(cat.category_id, cat.category_name)}
+                          className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+                        >
+                          Load More
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </CategoryCard>
+              );
+            })}
+
           </div>
-          {console.log("reading all products", products)}
-          {loader && <Loader message={loaderMessage} />}
-
-          {categories.map((cat) => {
-            // console.log("categories", cat)
-            const categoryProducts = productsByCategory[cat.category_id] || [];
-            const visible =
-              visibleCount[cat.category_id] || INITIAL_LIMIT;
-            // console.log("visible  -->", visible)
-            return (
-              <CategoryCard
-                key={cat.category_id}
-                title={cat.category_name}
-              >
-                {categoryProducts.length === 0 ? (
-                  <p className="text-gray-500">No products available</p>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {categoryProducts
-                        .slice(0, visible)
-                        .map((product) => (
-                          <ProductCard
-                            key={product.product_id}
-                            product={product}
-                          />
-                        ))}
-                    </div>
-
-                  
-                    <div className="mt-6 flex justify-center">
-                      <button
-                        onClick={() => loadMore(cat.category_id, cat.category_name)}
-                        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
-                      >
-                        Load More
-                      </button>
-                    </div>
-                  </>
-                )}
-              </CategoryCard>
-            );
-          })}
-
         </div>
-      </div>
-    </AdminLayout>
+      </AdminLayout>
+    </div>
   );
 };
 
