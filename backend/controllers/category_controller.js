@@ -1,5 +1,6 @@
 import pool from "../config/database.js";
-
+import api from "../utils/ApIResponse.js";
+import { sendSSE } from "../utils/sse.js";
 /**
  * Create a new product category
  * 
@@ -28,6 +29,11 @@ export async function createCategory(req, res) {
 
     const result = await pool.query(insertQuery);
     console.log("result rows ->", result.rows)
+
+    //server side event
+    const query = "SELECT * from categories"
+    const {rows } = await pool.query(query);
+    sendSSE("category_created", rows);
 
     // ✅ Return success
     return res.status(201).json({
@@ -90,7 +96,7 @@ export async function deleteCategory(req, res) {
       return res.status(404).json(api.reject("Category not found"));
     }
 
-    return res.status(200).json(api.response("Category deleted successfully",true));
+    return res.status(200).json(api.response("Category deleted successfully", true));
   } catch (err) {
     console.error("❌ Error deleting category:", err.message);
     return res.status(500).json(api.reject("Internal server error", err));
@@ -99,7 +105,7 @@ export async function deleteCategory(req, res) {
 
 export async function updateCategory(req, res) {
   try {
-    const { category_id } = req.params;
+    const { category_id } = req.body;
     const { category_name } = req.body;
 
     if (!category_id || !category_name) {
@@ -121,7 +127,7 @@ export async function updateCategory(req, res) {
       return res.status(404).json(api.reject("Category not found"));
     }
 
-    return res.status(200).json(api.response("Category updated successfully",true));
+    return res.status(200).json(api.response("Category updated successfully", true));
   } catch (err) {
     console.error("❌ Error updating category:", err.message);
     return res.status(500).json(api.reject("Internal server error", err));

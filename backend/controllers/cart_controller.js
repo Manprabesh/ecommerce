@@ -14,6 +14,9 @@ export async function addToCart(req, res) {
   try {
     const { user_id, product_id, quantity } = req.body;
 
+    console.log("userid",user_id);
+    console.log("productId",product_id);
+
     if (!user_id || !product_id) {
       return res.status(400).json({ success: false, message: "user_id and product_id are required" });
     }
@@ -92,7 +95,10 @@ export const getCart = async (req, res) => {
       ORDER BY c.created_at DESC
     `;
 
+    // const query =  "select * from cart where user_id = $1"
+
     const { rows } = await pool.query(query, [user_id]);
+    console.log("rows",rows)
 
     const data = await Promise.all(
       rows.map(async (cart) => {

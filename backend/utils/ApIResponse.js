@@ -12,8 +12,8 @@ class ApiResponse{
         return new ApiResponse (message, true, data, file)
     }
 
-    reject(message="server error",error=null){
-        return new ApiResponse(message, false, error);
+    reject(message="server error",error=null , data =null){
+        return new ApiResponse(message, false, data, error);
     }
 }
 

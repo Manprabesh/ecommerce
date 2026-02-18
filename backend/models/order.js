@@ -8,7 +8,6 @@ export async function orderTable() {
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
 
     total_amount NUMERIC(10, 2) NOT NULL,
-    order_status VARCHAR(50) DEFAULT 'Pending', -- e.g., Pending, Shipped, Delivered, Cancelled
 
     payment_method VARCHAR(50), -- e.g., 'Card', 'UPI', 'COD'
     payment_status VARCHAR(50) DEFAULT 'Unpaid', -- e.g., Paid, Unpaid, Refunded
