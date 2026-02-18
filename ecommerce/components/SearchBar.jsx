@@ -21,11 +21,10 @@ export const SearchBar = ({ onSearch, placeholder = "Search for products..." }) 
   };
 
   return (
-    <div className="w-full">
-      <div 
-        className={`relative flex items-center bg-white rounded-lg shadow-sm transition-all duration-200 ${
-          isFocused ? 'ring-2 ring-blue-500 shadow-md' : 'hover:shadow-md'
-        }`}
+    <div className="w-full ">
+      <div
+        className={`relative flex items-center bg-white rounded-lg shadow-sm transition-all duration-200 ${isFocused ? 'ring-2 ring-blue-500 shadow-md' : 'hover:shadow-md'
+          }`}
       >
         <div className="absolute left-3 sm:left-4 text-gray-400">
           <Search size={18} className="sm:w-5 sm:h-5" />
@@ -54,6 +53,8 @@ export const SearchBar = ({ onSearch, placeholder = "Search for products..." }) 
 };
 
 export const FilterSection = ({ filters, onFilterChange, onClearFilters, categories }) => {
+  console.log("filters", filters)
+  // console.log("on filters change", onFilterChange)
   const [expandedSections, setExpandedSections] = useState({
     category: true,
     price: true,
@@ -63,6 +64,7 @@ export const FilterSection = ({ filters, onFilterChange, onClearFilters, categor
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const toggleSection = (section) => {
+    console.log("sections", section)
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -78,17 +80,22 @@ export const FilterSection = ({ filters, onFilterChange, onClearFilters, categor
   ];
 
   const handleCategoryChange = (category) => {
+    // console.log("changing category noww",category)
+    // console.log("filterss",filters)
     const newCategories = filters.categories.includes(category)
       ? filters.categories.filter(c => c !== category)
       : [...filters.categories, category];
+
     onFilterChange({ ...filters, categories: newCategories });
   };
 
   const handlePriceChange = (range) => {
+    console.log("price,range", range)
     onFilterChange({ ...filters, priceRange: range });
   };
 
   const handleRatingChange = (rating) => {
+    console.log("min rating", rating)
     onFilterChange({ ...filters, minRating: filters.minRating === rating ? 0 : rating });
   };
 
@@ -96,10 +103,10 @@ export const FilterSection = ({ filters, onFilterChange, onClearFilters, categor
     onFilterChange({ ...filters, inStock: filters.inStock === inStock ? null : inStock });
   };
 
-  const activeFiltersCount = 
-    filters.categories.length + 
-    (filters.priceRange ? 1 : 0) + 
-    (filters.minRating > 0 ? 1 : 0) + 
+  const activeFiltersCount =
+    filters.categories.length +
+    (filters.priceRange ? 1 : 0) +
+    (filters.minRating > 0 ? 1 : 0) +
     (filters.inStock !== null ? 1 : 0);
 
   const FilterContent = () => (
@@ -136,15 +143,15 @@ export const FilterSection = ({ filters, onFilterChange, onClearFilters, categor
         {expandedSections.category && (
           <div className="space-y-1.5 sm:space-y-2 max-h-40 sm:max-h-48 overflow-y-auto">
             {categories.map((category) => (
-              <label key={category} className="flex items-center gap-2 cursor-pointer group">
+              <label key={category.category_id} className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
-                  checked={filters.categories.includes(category)}
-                  onChange={() => handleCategoryChange(category)}
+                  checked={filters.categories.includes(category.category_name)}
+                  onChange={() => handleCategoryChange(category.category_name)}
                   className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
                 <span className="text-xs sm:text-sm text-gray-700 group-hover:text-gray-900 capitalize">
-                  {category}
+                  {category.category_name}
                 </span>
               </label>
             ))}
@@ -163,26 +170,32 @@ export const FilterSection = ({ filters, onFilterChange, onClearFilters, categor
         </button>
         {expandedSections.price && (
           <div className="space-y-1.5 sm:space-y-2">
-            {priceRanges.map((range, index) => (
-              <label key={index} className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="priceRange"
-                  checked={filters.priceRange?.min === range.min && filters.priceRange?.max === range.max}
-                  onChange={() => handlePriceChange(range)}
-                  className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-xs sm:text-sm text-gray-700 group-hover:text-gray-900">
-                  {range.label}
-                </span>
-              </label>
-            ))}
+            {priceRanges.map((range, index) => {
+              {
+                // console.log("the range",range)
+              }
+              return (
+
+                <label key={index} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="priceRange"
+                    checked={filters.priceRange?.min === range.min && filters.priceRange?.max === range.max}
+                    onChange={() => handlePriceChange(range)}
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-xs sm:text-sm text-gray-700 group-hover:text-gray-900">
+                    {range.label}
+                  </span>
+                </label>
+              )
+            })}
           </div>
         )}
       </div>
 
       {/* Rating Filter */}
-      <div className="border-t pt-3 sm:pt-4 mt-3 sm:mt-4">
+      {/* <div className="border-t pt-3 sm:pt-4 mt-3 sm:mt-4">
         <button
           onClick={() => toggleSection('rating')}
           className="flex items-center justify-between w-full mb-2 sm:mb-3"
@@ -207,10 +220,10 @@ export const FilterSection = ({ filters, onFilterChange, onClearFilters, categor
             ))}
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Availability Filter */}
-      <div className="border-t pt-3 sm:pt-4 mt-3 sm:mt-4">
+      {/* <div className="border-t pt-3 sm:pt-4 mt-3 sm:mt-4">
         <button
           onClick={() => toggleSection('availability')}
           className="flex items-center justify-between w-full mb-2 sm:mb-3"
@@ -244,7 +257,7 @@ export const FilterSection = ({ filters, onFilterChange, onClearFilters, categor
             </label>
           </div>
         )}
-      </div>
+      </div> */}
     </>
   );
 
